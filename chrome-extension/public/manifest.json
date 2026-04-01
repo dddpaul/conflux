@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Confluence to Markdown",
+  "version": "0.1.0",
+  "description": "Export Confluence pages as Markdown",
+  "permissions": ["activeTab", "downloads", "storage"],
+  "host_permissions": [],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Confluence to Markdown"
+  },
+  "options_page": "options.html",
+  "icons": {}
+}

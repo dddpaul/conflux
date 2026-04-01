@@ -1,0 +1,26 @@
+{
+  "name": "confluence-to-markdown-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chrome extension to export Confluence pages as Markdown",
+  "scripts": {
+    "build": "tsx build.ts",
+    "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "turndown": "^7.2.0",
+    "turndown-plugin-gfm": "^1.0.2"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "@types/turndown": "^5.0.5",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "esbuild": "^0.24.0",
+    "eslint": "^8.57.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
