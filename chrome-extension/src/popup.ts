@@ -1,7 +1,7 @@
 import { parseConfluenceUrl } from "./url-parser";
 import { ConfluencePageInfo } from "./types";
 
-type PopupState =
+export type PopupState =
   | { kind: "idle"; pageInfo: ConfluencePageInfo }
   | { kind: "loading" }
   | { kind: "done"; filename: string }
@@ -13,7 +13,7 @@ const exportBtn = document.getElementById(
 ) as HTMLButtonElement | null;
 const statusDiv = document.getElementById("status");
 
-function render(state: PopupState): void {
+export function render(state: PopupState): void {
   if (!exportBtn || !statusDiv) return;
 
   statusDiv.className = "";

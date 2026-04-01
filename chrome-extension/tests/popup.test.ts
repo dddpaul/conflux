@@ -79,4 +79,36 @@ describe("popup", () => {
     expect(statusDiv.querySelector(".spinner")).not.toBeNull();
     expect(statusDiv.textContent).toContain("Exporting");
   });
+
+  it("shows done state with filename", async () => {
+    await loadPopup([
+      {
+        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
+      },
+    ]);
+
+    const { render } = await import("../src/popup");
+    render({ kind: "done", filename: "Getting-Started.md" });
+
+    expect(exportBtn.disabled).toBe(false);
+    expect(statusDiv.classList.contains("status-done")).toBe(true);
+    expect(statusDiv.textContent).toBe(
+      "Saved: Getting-Started.md",
+    );
+  });
+
+  it("shows error state with message", async () => {
+    await loadPopup([
+      {
+        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
+      },
+    ]);
+
+    const { render } = await import("../src/popup");
+    render({ kind: "error", message: "Failed to fetch page" });
+
+    expect(exportBtn.disabled).toBe(false);
+    expect(statusDiv.classList.contains("status-error")).toBe(true);
+    expect(statusDiv.textContent).toBe("Failed to fetch page");
+  });
 });
