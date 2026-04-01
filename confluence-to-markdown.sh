@@ -24,15 +24,18 @@ confluence-to-markdown() {
         return 1
     fi
 
-    # Validate URL format and extract components
-    if [[ ! "$url" =~ ^https?://([^/]+)/.*pageId=([0-9]+) ]]; then
+    # Validate URL format
+    if [[ ! "$url" =~ ^https?://[^/]+/.*pageId=[0-9]+ ]]; then
         echo "Error: invalid Confluence URL" >&2
         echo "  Expected format: https://host/pages/viewpage.action?pageId=123" >&2
         return 1
     fi
 
-    local host="${BASH_REMATCH[1]}"
-    local page_id="${BASH_REMATCH[2]}"
+    # Extract host and pageId via parameter expansion (works in both bash and zsh)
+    local _tmp="${url#*://}"
+    local host="${_tmp%%/*}"
+    _tmp="${url#*pageId=}"
+    local page_id="${_tmp%%[!0-9]*}"
 
     # Authenticate via pass utility
     local login password

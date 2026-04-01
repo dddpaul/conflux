@@ -335,6 +335,28 @@ output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?
 assert_eq "Stdout is the file path" "100 - Test Page.md" "$output"
 rm -f "100 - Test Page.md"
 
+# Test: URL with multi-level subdomain host parses correctly
+mock_curl_check_host() {
+    curl() {
+        local url=""
+        for arg in "$@"; do url="$arg"; done
+        if [[ "$url" == "https://confluence.domain.tld/rest/api/content/555?expand=body.export_view" ]]; then
+            local json='{"title":"Host Test","body":{"export_view":{"value":"<p>ok</p>"}}}'
+            printf '%s\n%s' "$json" "200"
+        else
+            echo "Wrong API URL: $url" >&2
+            return 22
+        fi
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_check_host
+mock_html2markdown_success
+output=$(confluence-to-markdown "https://confluence.domain.tld/pages/viewpage.action?pageId=555" 2>&1)
+assert_eq "Multi-level subdomain host parsed correctly" "555 - Host Test.md" "$output"
+rm -f "555 - Host Test.md"
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]] || exit 1
