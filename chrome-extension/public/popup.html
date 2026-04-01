@@ -27,17 +27,25 @@
       color: #172b4d;
     }
 
-    #export-btn {
-      width: 100%;
+    .btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-group button {
+      flex: 1;
       padding: 10px 16px;
       font-size: 14px;
       font-weight: 500;
-      color: #fff;
-      background: #0052cc;
       border: none;
       border-radius: 4px;
       cursor: pointer;
       transition: background 0.15s;
+    }
+
+    #export-btn {
+      color: #fff;
+      background: #0052cc;
     }
 
     #export-btn:hover:not(:disabled) {
@@ -48,10 +56,29 @@
       background: #0747a6;
     }
 
-    #export-btn:disabled {
+    #copy-btn {
+      color: #172b4d;
+      background: #f4f5f7;
+      border: 1px solid #dfe1e6;
+    }
+
+    #copy-btn:hover:not(:disabled) {
+      background: #ebecf0;
+    }
+
+    #copy-btn:active:not(:disabled) {
+      background: #dfe1e6;
+    }
+
+    .btn-group button:disabled {
       background: #dfe1e6;
       color: #a5adba;
       cursor: default;
+      border-color: transparent;
+    }
+
+    .status-copied {
+      color: #006644;
     }
 
     #status {
@@ -102,7 +129,10 @@
 </head>
 <body>
   <h1>Confluence to Markdown</h1>
-  <button id="export-btn" disabled>Export as Markdown</button>
+  <div class="btn-group">
+    <button id="export-btn" disabled>Export</button>
+    <button id="copy-btn" disabled>Copy</button>
+  </div>
   <div id="status" class="status-idle"></div>
   <script src="popup.js"></script>
 </body>
