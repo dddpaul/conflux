@@ -134,15 +134,15 @@ For UI tasks, verify in browser if tools are available (e.g., MCP). Note in task
 
 ## Project-Specific
 
-Проект состоит из двух частей: shell-функция и Chrome-расширение.
+Two components: shell function and Chrome extension.
 
-### Shell-функция (`confluence-to-markdown.sh`)
+### Shell Function (`confluence-to-markdown.sh`)
 
-- **Language:** Bash (совместимость с bash и zsh)
+- **Language:** Bash (compatible with bash and zsh)
 - **Test:** `bash test_confluence_to_markdown.sh`
 - **Lint:** `shellcheck confluence-to-markdown.sh`
 
-### Chrome-расширение (`chrome-extension/`)
+### Chrome Extension (`chrome-extension/`)
 
 - **Language:** TypeScript (strict mode)
 - **Build:** `npm run build` (esbuild)
@@ -159,9 +159,9 @@ For UI tasks, verify in browser if tools are available (e.g., MCP). Note in task
 
 #### Build
 
-- esbuild бандлит `src/*.ts` → `dist/` (загружается в Chrome)
-- `public/` (manifest.json, HTML, icons) копируется в `dist/` as-is
-- Turndown.js и turndown-plugin-gfm бандлятся в output, не загружаются с CDN
+- esbuild bundles `src/*.ts` → `dist/` (loaded in Chrome)
+- `public/` (manifest.json, HTML, icons) copied to `dist/` as-is
+- Turndown.js and turndown-plugin-gfm are bundled in output, not loaded from CDN
 
 #### Project Structure
 
