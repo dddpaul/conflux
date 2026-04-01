@@ -34,6 +34,16 @@ assert_contains() {
 
 source /workspace/confluence-to-markdown.sh
 
+# Mock pass to succeed by default so URL-parsing tests work
+pass() {
+    if [[ "$1" == "show" ]]; then
+        echo "s3cret"
+        return 0
+    fi
+    return 1
+}
+export -f pass
+
 # Test: no arguments -> exit 1
 output=$(confluence-to-markdown 2>&1 || true)
 ret=0; confluence-to-markdown 2>/dev/null || ret=$?
@@ -63,6 +73,46 @@ assert_contains "URL with extra params extracts pageId" "Page ID: 99" "$output"
 output=$(confluence-to-markdown "https://wiki.local:8443/pages/viewpage.action?pageId=42" 2>&1)
 assert_contains "URL with port extracts host:port" "Host: wiki.local:8443" "$output"
 assert_contains "URL with port extracts pageId" "Page ID: 42" "$output"
+
+# --- Authentication via pass tests ---
+
+# Create a mock pass command that succeeds
+mock_pass_success() {
+    pass() {
+        if [[ "$1" == "show" ]]; then
+            echo "s3cret"
+            return 0
+        fi
+        return 1
+    }
+    export -f pass
+}
+
+# Create a mock pass command that fails
+mock_pass_failure() {
+    pass() {
+        echo "Error: ORG/username is not in the password store." >&2
+        return 1
+    }
+    export -f pass
+}
+
+# Test: login is extracted as basename of PASS_PATH
+mock_pass_success
+output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1)
+# The function should not error when pass succeeds
+ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" >/dev/null 2>&1 || ret=$?
+assert_eq "pass success returns zero exit code" "0" "$ret"
+
+# Test: pass failure returns non-zero and prints error to stderr
+mock_pass_failure
+ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>/dev/null || ret=$?
+assert_eq "pass failure returns non-zero exit code" "1" "$ret"
+assert_contains "pass failure prints error to stderr" "Error:" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1 || true)"
+assert_contains "pass failure mentions pass path" "ORG/username" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1 || true)"
+
+# Restore pass mock for remaining tests
+mock_pass_success
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

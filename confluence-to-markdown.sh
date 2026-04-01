@@ -3,10 +3,10 @@
 # Confluence page export to markdown
 # Source this file in .bashrc/.zshrc to use the confluence-to-markdown function
 
-# Path in pass store: login is derived from the last segment, password is the stored value
-CONFLUENCE_PASS_PATH="ORG/username"
-
 confluence-to-markdown() {
+    # Path in pass store: login is the last segment, password is the stored value
+    local PASS_PATH="ORG/username"
+
     local url="${1:-}"
 
     if [[ -z "$url" ]]; then
@@ -24,6 +24,15 @@ confluence-to-markdown() {
 
     local host="${BASH_REMATCH[1]}"
     local page_id="${BASH_REMATCH[2]}"
+
+    # Authenticate via pass utility
+    local login password
+    login="$(basename "$PASS_PATH")"
+
+    if ! password="$(pass show "$PASS_PATH" 2>&1)"; then
+        echo "Error: failed to retrieve password from pass at '$PASS_PATH'" >&2
+        return 1
+    fi
 
     echo "Host: $host"
     echo "Page ID: $page_id"
