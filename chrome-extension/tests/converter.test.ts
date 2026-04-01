@@ -139,6 +139,101 @@ describe("convertHtmlToMarkdown", () => {
     });
   });
 
+  describe("Confluence panels", () => {
+    it("converts info panel to blockquote with Info prefix", () => {
+      const html = `<div class="confluence-information-macro confluence-information-macro-information">
+        <div class="confluence-information-macro-body">This is informational.</div>
+      </div>`;
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("> **Info:**");
+      expect(result.markdown).toContain("> This is informational.");
+    });
+
+    it("converts warning panel to blockquote with Warning prefix", () => {
+      const html = `<div class="confluence-information-macro confluence-information-macro-warning">
+        <div class="confluence-information-macro-body">Be careful!</div>
+      </div>`;
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("> **Warning:**");
+      expect(result.markdown).toContain("> Be careful!");
+    });
+
+    it("converts note panel to blockquote with Note prefix", () => {
+      const html = `<div class="confluence-information-macro confluence-information-macro-note">
+        <div class="confluence-information-macro-body">Take note.</div>
+      </div>`;
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("> **Note:**");
+      expect(result.markdown).toContain("> Take note.");
+    });
+
+    it("converts tip panel to blockquote with Tip prefix", () => {
+      const html = `<div class="confluence-information-macro confluence-information-macro-tip">
+        <div class="confluence-information-macro-body">A useful tip.</div>
+      </div>`;
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("> **Tip:**");
+      expect(result.markdown).toContain("> A useful tip.");
+    });
+  });
+
+  describe("Confluence expand macro", () => {
+    it("converts expand macro to details/summary", () => {
+      const html = `<div class="expand-container">
+        <div class="expand-control"><span class="expand-control-text">Click to expand</span></div>
+        <div class="expand-content">Hidden content here.</div>
+      </div>`;
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("<details>");
+      expect(result.markdown).toContain("<summary>Click to expand</summary>");
+      expect(result.markdown).toContain("Hidden content here.");
+      expect(result.markdown).toContain("</details>");
+    });
+
+    it("uses default title when expand control text is missing", () => {
+      const html = `<div class="expand-container">
+        <div class="expand-content">Content.</div>
+      </div>`;
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("<summary>Details</summary>");
+    });
+  });
+
+  describe("Confluence TOC macro", () => {
+    it("removes table of contents macro", () => {
+      const html = `<div class="toc-macro">
+        <ul><li><a href="#section1">Section 1</a></li></ul>
+      </div>`;
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).not.toContain("Section 1");
+      expect(result.markdown).not.toContain("toc-macro");
+    });
+  });
+
+  describe("Confluence status macro", () => {
+    it("converts status-macro to bold bracketed text", () => {
+      const html = '<span class="status-macro" data-colour="Green">Done</span>';
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("**[DONE]**");
+    });
+
+    it("converts aui-lozenge to bold bracketed text", () => {
+      const html = '<span class="aui-lozenge aui-lozenge-success">In Progress</span>';
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("**[IN PROGRESS]**");
+    });
+  });
+
+  describe("Confluence user mentions", () => {
+    it("converts user mention link to plain text", () => {
+      const html = '<a class="confluence-userlink" data-username="jdoe">John Doe</a>';
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("John Doe");
+      expect(result.markdown).not.toContain("confluence-userlink");
+      expect(result.markdown).not.toContain("[John Doe]");
+    });
+  });
+
   describe("options", () => {
     it("respects custom bullet list marker", () => {
       const html = "<ul><li>Item</li></ul>";

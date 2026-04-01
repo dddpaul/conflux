@@ -19,6 +19,83 @@ function createTurndownService(options: ConversionOptions): TurndownService {
 
   service.use(gfm);
 
+  service.addRule("confluencePanel", {
+    filter: (node) => {
+      return (
+        node.nodeName === "DIV" &&
+        /\bconfluence-information-macro\b/.test(node.getAttribute("class") || "")
+      );
+    },
+    replacement: (_content, node) => {
+      const cls = (node as HTMLElement).getAttribute("class") || "";
+      let prefix = "Note";
+      if (cls.includes("confluence-information-macro-information")) prefix = "Info";
+      else if (cls.includes("confluence-information-macro-warning")) prefix = "Warning";
+      else if (cls.includes("confluence-information-macro-tip")) prefix = "Tip";
+
+      const body = (node as HTMLElement).querySelector(
+        ".confluence-information-macro-body",
+      );
+      const inner = body ? body.textContent?.trim() || "" : (node as HTMLElement).textContent?.trim() || "";
+      const quoted = inner
+        .split("\n")
+        .map((line) => `> ${line}`)
+        .join("\n");
+      return `\n\n> **${prefix}:**\n${quoted}\n\n`;
+    },
+  });
+
+  service.addRule("confluenceExpand", {
+    filter: (node) => {
+      return (
+        node.nodeName === "DIV" &&
+        /\bexpand-container\b/.test(node.getAttribute("class") || "")
+      );
+    },
+    replacement: (_content, node) => {
+      const el = node as HTMLElement;
+      const titleEl = el.querySelector(".expand-control-text");
+      const title = titleEl?.textContent?.trim() || "Details";
+      const contentEl = el.querySelector(".expand-content");
+      const content = contentEl?.textContent?.trim() || "";
+      return `\n\n<details>\n<summary>${title}</summary>\n\n${content}\n\n</details>\n\n`;
+    },
+  });
+
+  service.addRule("confluenceToc", {
+    filter: (node) => {
+      return (
+        node.nodeName === "DIV" &&
+        /\btoc-macro\b/.test(node.getAttribute("class") || "")
+      );
+    },
+    replacement: () => "",
+  });
+
+  service.addRule("confluenceStatus", {
+    filter: (node) => {
+      if (node.nodeName !== "SPAN") return false;
+      const cls = node.getAttribute("class") || "";
+      return /\bstatus-macro\b/.test(cls) || /\baui-lozenge\b/.test(cls);
+    },
+    replacement: (_content, node) => {
+      const text = (node as HTMLElement).textContent?.trim() || "";
+      return `**[${text.toUpperCase()}]**`;
+    },
+  });
+
+  service.addRule("confluenceUserMention", {
+    filter: (node) => {
+      return (
+        node.nodeName === "A" &&
+        /\bconfluence-userlink\b/.test(node.getAttribute("class") || "")
+      );
+    },
+    replacement: (_content, node) => {
+      return (node as HTMLElement).textContent?.trim() || "";
+    },
+  });
+
   service.addRule("confluenceCodeBlock", {
     filter: (node) => {
       return node.nodeName === "PRE" && extractLanguage(node) !== "";
