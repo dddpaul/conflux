@@ -134,49 +134,66 @@ For UI tasks, verify in browser if tools are available (e.g., MCP). Note in task
 
 ## Project-Specific
 
-- **Language:** Python
-- **Build:** `pytest`
-- **Lint:** `ruff check .`
-- **Test:** `pytest`
+Проект состоит из двух частей: shell-функция и Chrome-расширение.
+
+### Shell-функция (`confluence-to-markdown.sh`)
+
+- **Language:** Bash (совместимость с bash и zsh)
+- **Test:** `bash test_confluence_to_markdown.sh`
+- **Lint:** `shellcheck confluence-to-markdown.sh`
+
+### Chrome-расширение (`chrome-extension/`)
+
+- **Language:** TypeScript (strict mode)
+- **Build:** `npm run build` (esbuild)
+- **Lint:** `npm run lint` (eslint + typescript-eslint)
+- **Test:** `npm run test` (vitest)
 - **Framework:** —
 
-### Conventions
+#### Package Management
 
-Use uv exclusively for Python package management in this project.
+- Use npm for dependency management
+- Install: `npm install`
+- Add dependency: `npm install <package>`
+- Add dev dependency: `npm install -D <package>`
 
-**Package Management Commands**
+#### Build
 
-- All Python dependencies **must be installed, synchronized, and locked** using uv
-- Never use pip, pip-tools, poetry, or conda directly for dependency management
+- esbuild бандлит `src/*.ts` → `dist/` (загружается в Chrome)
+- `public/` (manifest.json, HTML, icons) копируется в `dist/` as-is
+- Turndown.js и turndown-plugin-gfm бандлятся в output, не загружаются с CDN
 
-Use these commands:
+#### Project Structure
 
-- Install dependencies: `uv add <package>`
-- Remove dependencies: `uv remove <package>`
-- Sync dependencies: `uv sync`
+```
+chrome-extension/
+├── src/           # TypeScript source
+│   ├── background.ts
+│   ├── popup.ts
+│   ├── converter.ts
+│   ├── options.ts
+│   ├── url-parser.ts
+│   └── types.ts
+├── public/        # Static files → dist/
+│   ├── manifest.json
+│   ├── popup.html
+│   ├── options.html
+│   └── icons/
+├── dist/          # Build output (gitignored), load in Chrome
+├── tests/
+│   └── converter.test.ts
+├── package.json
+├── tsconfig.json
+└── build.ts
+```
 
-**Running Python Code**
+#### Code Style
 
-- Run a Python script with `uv run <script-name>.py`
-- Run Python tools like Pytest with `uv run pytest` or `uv run ruff`
-- Launch a Python repl with `uv run python`
-- Run test with `uv run pytest <test-name>.py`
-
-**Managing Scripts with PEP 723 Inline Metadata**
-
-- Run a Python script with inline metadata (dependencies defined at the top of the file) with: `uv run script.py`
-- You can add or remove dependencies manually from the `dependencies =` section at the top of the script, or
-- Or using uv CLI:
-    - `uv add package-name --script script.py`
-    - `uv remove package-name --script script.py`
-
-### Code Style
-
-- Formatting: Follow PEP 8, use ruff formatter
-- Imports: Sort imports with standard library first, then third-party, then local
-- Types: Use type hints for all functions and methods
-- Naming: snake_case for functions/variables, PascalCase for classes
-- Error handling: Use specific exceptions, include context in error messages
-- Docstrings: Google-style docstrings for public functions/classes
-- Line length: Maximum 88 characters
-- Function length: Keep functions focused and under 50 lines
+- Strict TypeScript: `strict: true` in tsconfig.json
+- Types: `@types/chrome` for Chrome Extension API
+- Formatting: Prettier (default config)
+- Imports: named imports, no default exports
+- Naming: camelCase for functions/variables, PascalCase for types/interfaces
+- Error handling: typed errors, user-facing messages in popup
+- Line length: 100 characters max
+- Functions: under 50 lines, single responsibility
