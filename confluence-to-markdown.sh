@@ -34,6 +34,34 @@ confluence-to-markdown() {
         return 1
     fi
 
-    echo "Host: $host"
-    echo "Page ID: $page_id"
+    # Fetch page via Confluence REST API
+    local api_url="https://${host}/rest/api/content/${page_id}?expand=body.export_view"
+    local response http_code body
+
+    response="$(curl -sf -u "${login}:${password}" -w '\n%{http_code}' "$api_url" 2>&1)" || {
+        echo "Error: failed to fetch page from Confluence API (URL: $api_url)" >&2
+        return 1
+    }
+
+    http_code="$(tail -n1 <<< "$response")"
+    body="$(sed '$ d' <<< "$response")"
+
+    if [[ "$http_code" -ne 200 ]]; then
+        echo "Error: Confluence API returned HTTP $http_code" >&2
+        return 1
+    fi
+
+    local title html
+    if ! title="$(jq -re '.title' <<< "$body" 2>&1)"; then
+        echo "Error: failed to parse title from API response" >&2
+        return 1
+    fi
+
+    if ! html="$(jq -re '.body.export_view.value' <<< "$body" 2>&1)"; then
+        echo "Error: failed to parse body from API response" >&2
+        return 1
+    fi
+
+    echo "$title"
+    echo "$html"
 }
