@@ -2,8 +2,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const mockQuery = vi.fn();
+const mockContains = vi.fn();
+const mockRequest = vi.fn();
 vi.stubGlobal("chrome", {
   tabs: { query: mockQuery },
+  permissions: { contains: mockContains, request: mockRequest },
 });
 
 describe("popup", () => {
@@ -21,6 +24,8 @@ describe("popup", () => {
     statusDiv = document.getElementById("status") as HTMLDivElement;
     vi.resetModules();
     mockQuery.mockReset();
+    mockContains.mockReset();
+    mockRequest.mockReset();
   });
 
   async function loadPopup(
@@ -29,6 +34,7 @@ describe("popup", () => {
     mockQuery.mockResolvedValue(tabs);
     vi.stubGlobal("chrome", {
       tabs: { query: mockQuery },
+      permissions: { contains: mockContains, request: mockRequest },
     });
     await import("../src/popup");
     await new Promise((r) => setTimeout(r, 0));
@@ -95,6 +101,42 @@ describe("popup", () => {
     expect(statusDiv.textContent).toBe(
       "Saved: Getting-Started.md",
     );
+  });
+
+  it("shows error when host permission denied", async () => {
+    mockContains.mockResolvedValue(false);
+    mockRequest.mockResolvedValue(false);
+
+    await loadPopup([
+      {
+        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
+      },
+    ]);
+
+    exportBtn.click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(exportBtn.disabled).toBe(false);
+    expect(statusDiv.classList.contains("status-error")).toBe(true);
+    expect(statusDiv.textContent).toBe("Host permission denied");
+  });
+
+  it("proceeds when host permission granted", async () => {
+    mockContains.mockResolvedValue(true);
+
+    await loadPopup([
+      {
+        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
+      },
+    ]);
+
+    exportBtn.click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    // After permission granted, button stays disabled (loading state)
+    // because export pipeline is not yet wired (TASK-19)
+    expect(exportBtn.disabled).toBe(true);
+    expect(statusDiv.classList.contains("status-loading")).toBe(true);
   });
 
   it("shows error state with message", async () => {

@@ -1,4 +1,5 @@
 import { parseConfluenceUrl } from "./url-parser";
+import { ensureHostPermission } from "./permissions";
 import { ConfluencePageInfo } from "./types";
 
 export type PopupState =
@@ -75,8 +76,16 @@ async function init(): Promise<void> {
 
   render({ kind: "idle", pageInfo });
 
-  exportBtn?.addEventListener("click", () => {
+  exportBtn?.addEventListener("click", async () => {
     render({ kind: "loading" });
+    const granted = await ensureHostPermission(url);
+    if (!granted) {
+      render({
+        kind: "error",
+        message: "Host permission denied",
+      });
+      return;
+    }
     // Export pipeline will be wired in TASK-19
   });
 }
