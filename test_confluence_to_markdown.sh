@@ -128,6 +128,25 @@ mock_pass_success
 mock_curl_success
 mock_html2markdown_success
 
+# Set CONFLUENCE_PASS_PATH for all tests
+export CONFLUENCE_PASS_PATH="ORG/username"
+
+# --- CONFLUENCE_PASS_PATH env variable tests ---
+
+# Test: missing CONFLUENCE_PASS_PATH returns non-zero and prints error to stderr
+saved_pass_path="$CONFLUENCE_PASS_PATH"
+unset CONFLUENCE_PASS_PATH
+ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>/dev/null || ret=$?
+assert_eq "Missing CONFLUENCE_PASS_PATH returns non-zero exit code" "1" "$ret"
+assert_contains "Missing CONFLUENCE_PASS_PATH prints error to stderr" "CONFLUENCE_PASS_PATH" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1 || true)"
+export CONFLUENCE_PASS_PATH="$saved_pass_path"
+
+# Test: empty CONFLUENCE_PASS_PATH returns non-zero
+export CONFLUENCE_PASS_PATH=""
+ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>/dev/null || ret=$?
+assert_eq "Empty CONFLUENCE_PASS_PATH returns non-zero exit code" "1" "$ret"
+export CONFLUENCE_PASS_PATH="$saved_pass_path"
+
 # --- URL parsing tests ---
 
 # Test: no arguments -> exit 1

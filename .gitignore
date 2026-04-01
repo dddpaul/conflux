@@ -1,3 +1,6 @@
 # Ralph / Claude
 .claude/
 .DS_Store
+
+# Environment
+.env

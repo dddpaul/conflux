@@ -4,8 +4,17 @@
 # Source this file in .bashrc/.zshrc to use the confluence-to-markdown function
 
 confluence-to-markdown() {
+    # Load .env from current directory if it exists
+    if [[ -f .env ]]; then
+        source .env
+    fi
+
     # Path in pass store: login is the last segment, password is the stored value
-    local PASS_PATH="ORG/username"
+    if [[ -z "${CONFLUENCE_PASS_PATH:-}" ]]; then
+        echo "Error: CONFLUENCE_PASS_PATH environment variable is not set" >&2
+        return 1
+    fi
+    local PASS_PATH="$CONFLUENCE_PASS_PATH"
 
     local url="${1:-}"
 
