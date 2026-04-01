@@ -69,6 +69,13 @@ confluence-to-markdown() {
         return 1
     fi
 
-    echo "$title"
-    echo "$markdown"
+    # Sanitize title for use in filename: remove / : ? * " < > | \
+    local sanitized_title
+    sanitized_title="$(echo "$title" | tr -d '/:?*"<>|\\')"
+
+    # Save markdown to file
+    local filename="${page_id} - ${sanitized_title}.md"
+    printf '# %s\n\n%s\n' "$title" "$markdown" > "$filename"
+
+    echo "$filename"
 }

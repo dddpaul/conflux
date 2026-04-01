@@ -165,10 +165,14 @@ mock_curl_success
 
 # --- API fetch tests ---
 
-# Test: successful fetch extracts title and converted markdown body
+# Test: successful fetch saves file and outputs filename
 output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
-assert_contains "Successful fetch outputs title" "Test Page" "$output"
-assert_contains "Successful fetch outputs converted markdown (no HTML tags)" "Hello" "$output"
+assert_eq "Successful fetch outputs filename" "123 - Test Page.md" "$output"
+assert_eq "Saved file exists" "0" "$([[ -f "123 - Test Page.md" ]] && echo 0 || echo 1)"
+file_content="$(cat "123 - Test Page.md")"
+assert_contains "Saved file contains title as h1" "# Test Page" "$file_content"
+assert_contains "Saved file contains converted markdown" "Hello" "$file_content"
+rm -f "123 - Test Page.md"
 
 # Test: curl failure returns non-zero and prints error
 mock_curl_http_error
@@ -221,7 +225,9 @@ mock_html2markdown_check_flags() {
 }
 mock_html2markdown_check_flags
 output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
-assert_contains "html2markdown called with --plugin-table and --exclude-selector=br" "flags-ok" "$output"
+file_content="$(cat "123 - Test Page.md" 2>/dev/null || true)"
+assert_contains "html2markdown called with --plugin-table and --exclude-selector=br" "flags-ok" "$file_content"
+rm -f "123 - Test Page.md"
 
 # Restore default mocks
 mock_pass_success
@@ -236,8 +242,10 @@ mock_html2markdown_echo_stdin() {
     export -f html2markdown
 }
 mock_html2markdown_echo_stdin
-output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
-assert_contains "html2markdown receives HTML body via stdin" "<p>Hello</p>" "$output"
+confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+file_content="$(cat "123 - Test Page.md" 2>/dev/null || true)"
+assert_contains "html2markdown receives HTML body via stdin" "<p>Hello</p>" "$file_content"
+rm -f "123 - Test Page.md"
 
 # Test: image URLs are preserved (html2markdown passes them through)
 mock_curl_with_image() {
@@ -249,8 +257,10 @@ mock_curl_with_image() {
 }
 mock_curl_with_image
 mock_html2markdown_echo_stdin
-output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
-assert_contains "Image URLs preserved as original Confluence URLs" "https://wiki.example.com/download/attachments/123/image.png" "$output"
+confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+file_content="$(cat "123 - Image Page.md" 2>/dev/null || true)"
+assert_contains "Image URLs preserved as original Confluence URLs" "https://wiki.example.com/download/attachments/123/image.png" "$file_content"
+rm -f "123 - Image Page.md"
 
 # Restore default mocks
 mock_pass_success
@@ -262,6 +272,49 @@ mock_html2markdown_failure
 ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
 assert_eq "html2markdown failure returns non-zero exit code" "1" "$ret"
 assert_contains "html2markdown failure prints error to stderr" "Error:" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
+
+# --- File saving and sanitization tests ---
+
+# Restore default mocks
+mock_pass_success
+mock_html2markdown_success
+
+# Test: special characters are removed from filename
+mock_curl_special_title() {
+    curl() {
+        local json='{"title":"Test/Page: A?B*C\"D<E>F|G\\H","body":{"export_view":{"value":"<p>content</p>"}}}'
+        printf '%s\n%s' "$json" "200"
+    }
+    export -f curl
+}
+mock_curl_special_title
+output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=456" 2>&1)
+assert_eq "Special chars removed from filename" "456 - TestPage ABCDEFGH.md" "$output"
+assert_eq "Sanitized file exists" "0" "$([[ -f "456 - TestPage ABCDEFGH.md" ]] && echo 0 || echo 1)"
+rm -f "456 - TestPage ABCDEFGH.md"
+
+# Test: file contains title heading with original (unsanitized) title
+mock_curl_special_title
+confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=456" >/dev/null 2>&1
+file_content="$(cat "456 - TestPage ABCDEFGH.md" 2>/dev/null || true)"
+assert_contains "File heading uses original title" 'Test/Page: A?B*C"D<E>F|G\H' "$file_content"
+rm -f "456 - TestPage ABCDEFGH.md"
+
+# Test: filename uses pageId from URL
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=99999" 2>&1)
+assert_eq "Filename uses correct pageId" "99999 - Test Page.md" "$output"
+rm -f "99999 - Test Page.md"
+
+# Test: output is the file path (stdout)
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1)
+assert_eq "Stdout is the file path" "100 - Test Page.md" "$output"
+rm -f "100 - Test Page.md"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
