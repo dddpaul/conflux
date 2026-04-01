@@ -20,7 +20,7 @@ Export Confluence pages to Markdown files. Two independent tools, same principle
 
 - [curl](https://curl.se/) -- HTTP requests
 - [jq](https://jqlang.github.io/jq/) -- JSON parsing
-- [html2markdown](https://github.com/nicholasgasior/goinern) -- HTML to Markdown conversion
+- [html-to-markdown](https://github.com/JohannesKaufmann/html-to-markdown) -- HTML to Markdown conversion
 - [pass](https://www.passwordstore.org/) -- password manager for Confluence credentials
 
 ### Setup
