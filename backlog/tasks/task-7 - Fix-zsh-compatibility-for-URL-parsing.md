@@ -4,6 +4,7 @@ title: Fix zsh compatibility for URL parsing
 status: To Do
 assignee: []
 created_date: '2026-04-01 15:04'
+updated_date: '2026-04-01 15:23'
 labels: []
 dependencies: []
 ---
@@ -20,4 +21,5 @@ dependencies: []
 - [ ] #2 Парсинг URL корректно извлекает host и pageId при source в bash
 - [ ] #3 Валидация невалидного URL по-прежнему работает
 - [ ] #4 Существующие тесты проходят
+- [ ] #5 Тест: URL с хостом confluence.domain.tld корректно парсится (host и pageId извлекаются верно)
 <!-- AC:END -->
