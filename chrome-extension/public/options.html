@@ -11,15 +11,155 @@
       padding: 0 16px;
       font-family: system-ui, sans-serif;
       font-size: 14px;
+      color: #172b4d;
     }
     h1 {
       font-size: 20px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      font-size: 16px;
+      margin: 20px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #dfe1e6;
+    }
+    .field {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .field label {
+      flex: 1;
+    }
+    .field select {
+      width: 180px;
+      padding: 6px 8px;
+      font-size: 14px;
+      border: 1px solid #dfe1e6;
+      border-radius: 4px;
+      background: #fff;
+    }
+    .toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .toggle label {
+      flex: 1;
+    }
+    .toggle input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    .actions {
+      margin-top: 24px;
+      display: flex;
+      gap: 8px;
+    }
+    .btn {
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-primary {
+      color: #fff;
+      background: #0052cc;
+    }
+    .btn-primary:hover {
+      background: #0065ff;
+    }
+    .btn-secondary {
+      color: #172b4d;
+      background: #f4f5f7;
+      border: 1px solid #dfe1e6;
+    }
+    .btn-secondary:hover {
+      background: #ebecf0;
+    }
+    #save-status {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #006644;
+      min-height: 20px;
     }
   </style>
 </head>
 <body>
   <h1>Confluence to Markdown - Options</h1>
-  <div id="options-form"></div>
+
+  <form id="options-form">
+    <h2>Markdown Formatting</h2>
+
+    <div class="field">
+      <label for="headingStyle">Heading style</label>
+      <select id="headingStyle">
+        <option value="atx"># atx</option>
+        <option value="setext">Setext (underline)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="bulletListMarker">Bullet list marker</label>
+      <select id="bulletListMarker">
+        <option value="-">- dash</option>
+        <option value="*">* asterisk</option>
+        <option value="+">+ plus</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="codeBlockStyle">Code block style</label>
+      <select id="codeBlockStyle">
+        <option value="fenced">``` fenced</option>
+        <option value="indented">Indented</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="brHandling">Line break (&lt;br&gt;) handling</label>
+      <select id="brHandling">
+        <option value="newline">Replace with newline</option>
+        <option value="remove">Remove</option>
+        <option value="keep">Keep as &lt;br&gt;</option>
+      </select>
+    </div>
+
+    <h2>Confluence Macros</h2>
+
+    <div class="toggle">
+      <label for="macro-panels">Convert panels (Info, Warning, Tip, Note)</label>
+      <input type="checkbox" id="macro-panels" checked>
+    </div>
+
+    <div class="toggle">
+      <label for="macro-expand">Convert expand sections to &lt;details&gt;</label>
+      <input type="checkbox" id="macro-expand" checked>
+    </div>
+
+    <div class="toggle">
+      <label for="macro-toc">Remove table of contents macro</label>
+      <input type="checkbox" id="macro-toc" checked>
+    </div>
+
+    <div class="toggle">
+      <label for="macro-status">Convert status badges to [STATUS]</label>
+      <input type="checkbox" id="macro-status" checked>
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="btn btn-primary" id="save-btn">Save</button>
+      <button type="button" class="btn btn-secondary" id="reset-btn">Reset to defaults</button>
+    </div>
+
+    <div id="save-status"></div>
+  </form>
+
   <script src="options.js"></script>
 </body>
 </html>

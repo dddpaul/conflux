@@ -11,6 +11,21 @@ export interface ConversionOptions {
   bulletListMarker: "-" | "+" | "*";
 }
 
+export interface MacroToggles {
+  panels: boolean;
+  expand: boolean;
+  toc: boolean;
+  status: boolean;
+}
+
+export interface ExtensionSettings {
+  headingStyle: "atx" | "setext";
+  codeBlockStyle: "fenced" | "indented";
+  bulletListMarker: "-" | "+" | "*";
+  brHandling: "remove" | "newline" | "keep";
+  macros: MacroToggles;
+}
+
 export interface ExportResult {
   markdown: string;
   filename: string;

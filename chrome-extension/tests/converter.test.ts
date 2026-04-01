@@ -243,4 +243,52 @@ describe("convertHtmlToMarkdown", () => {
       expect(result.markdown).toMatch(/\*\s+Item/);
     });
   });
+
+  describe("br handling", () => {
+    it("replaces br with newline by default", () => {
+      const html = "<p>Line 1<br>Line 2</p>";
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("Line 1");
+      expect(result.markdown).toContain("Line 2");
+    });
+
+    it("keeps br as html when set to keep", () => {
+      const html = "<p>Line 1<br>Line 2</p>";
+      const result = convertHtmlToMarkdown(html, "Test", {
+        brHandling: "keep",
+      });
+      expect(result.markdown).toContain("<br>");
+    });
+  });
+
+  describe("macro toggles", () => {
+    it("skips panel conversion when panels toggle is off", () => {
+      const html = `<div class="confluence-information-macro confluence-information-macro-information">
+        <div class="confluence-information-macro-body">Info text</div>
+      </div>`;
+      const result = convertHtmlToMarkdown(html, "Test", {
+        macros: { panels: false, expand: true, toc: true, status: true },
+      });
+      expect(result.markdown).not.toContain("> **Info:**");
+    });
+
+    it("skips expand conversion when expand toggle is off", () => {
+      const html = `<div class="expand-container">
+        <div class="expand-control"><span class="expand-control-text">Click</span></div>
+        <div class="expand-content">Hidden</div>
+      </div>`;
+      const result = convertHtmlToMarkdown(html, "Test", {
+        macros: { panels: true, expand: false, toc: true, status: true },
+      });
+      expect(result.markdown).not.toContain("<details>");
+    });
+
+    it("skips status conversion when status toggle is off", () => {
+      const html = '<span class="status-macro">Done</span>';
+      const result = convertHtmlToMarkdown(html, "Test", {
+        macros: { panels: true, expand: true, toc: true, status: false },
+      });
+      expect(result.markdown).not.toContain("**[DONE]**");
+    });
+  });
 });

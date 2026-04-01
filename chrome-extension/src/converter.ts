@@ -1,25 +1,40 @@
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
-import { ConversionOptions, ExportResult } from "./types";
+import { ConversionOptions, ExportResult, MacroToggles } from "./types";
 
-const DEFAULT_OPTIONS: ConversionOptions = {
+interface ConverterOptions extends ConversionOptions {
+  brHandling?: "remove" | "newline" | "keep";
+  macros?: MacroToggles;
+}
+
+const DEFAULT_OPTIONS: ConverterOptions = {
   headingStyle: "atx",
   codeBlockStyle: "fenced",
   bulletListMarker: "-",
+  brHandling: "newline",
+  macros: { panels: true, expand: true, toc: true, status: true },
 };
 
-function createTurndownService(options: ConversionOptions): TurndownService {
+function brOptionToString(br: "remove" | "newline" | "keep"): string {
+  if (br === "remove") return "";
+  if (br === "newline") return "\n";
+  return "<br>";
+}
+
+function createTurndownService(options: ConverterOptions): TurndownService {
   const service = new TurndownService({
     headingStyle: options.headingStyle,
     codeBlockStyle: options.codeBlockStyle,
     bulletListMarker: options.bulletListMarker,
     fence: "```",
-    br: "\n",
+    br: brOptionToString(options.brHandling ?? "newline"),
   });
 
   service.use(gfm);
 
-  service.addRule("confluencePanel", {
+  const macros = options.macros ?? DEFAULT_OPTIONS.macros!;
+
+  if (macros.panels) service.addRule("confluencePanel", {
     filter: (node) => {
       return (
         node.nodeName === "DIV" &&
@@ -45,7 +60,7 @@ function createTurndownService(options: ConversionOptions): TurndownService {
     },
   });
 
-  service.addRule("confluenceExpand", {
+  if (macros.expand) service.addRule("confluenceExpand", {
     filter: (node) => {
       return (
         node.nodeName === "DIV" &&
@@ -62,7 +77,7 @@ function createTurndownService(options: ConversionOptions): TurndownService {
     },
   });
 
-  service.addRule("confluenceToc", {
+  if (macros.toc) service.addRule("confluenceToc", {
     filter: (node) => {
       return (
         node.nodeName === "DIV" &&
@@ -72,7 +87,7 @@ function createTurndownService(options: ConversionOptions): TurndownService {
     replacement: () => "",
   });
 
-  service.addRule("confluenceStatus", {
+  if (macros.status) service.addRule("confluenceStatus", {
     filter: (node) => {
       if (node.nodeName !== "SPAN") return false;
       const cls = node.getAttribute("class") || "";
@@ -164,9 +179,13 @@ function slugifyTitle(title: string): string {
 export function convertHtmlToMarkdown(
   html: string,
   title: string,
-  options?: Partial<ConversionOptions>,
+  options?: Partial<ConverterOptions>,
 ): ExportResult {
-  const mergedOptions: ConversionOptions = { ...DEFAULT_OPTIONS, ...options };
+  const mergedOptions: ConverterOptions = {
+    ...DEFAULT_OPTIONS,
+    ...options,
+    macros: { ...DEFAULT_OPTIONS.macros!, ...options?.macros },
+  };
   const service = createTurndownService(mergedOptions);
 
   const rawMarkdown = service.turndown(html);

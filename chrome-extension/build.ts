@@ -6,6 +6,7 @@ const entryPoints = [
   "src/popup.ts",
   "src/converter.ts",
   "src/options.ts",
+  "src/settings.ts",
 ];
 
 async function runBuild(): Promise<void> {
