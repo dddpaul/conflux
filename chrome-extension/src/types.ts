@@ -44,3 +44,12 @@ export interface PageContent {
   title: string;
   html: string;
 }
+
+export interface FetchPageMessage {
+  action: "fetchPage";
+  pageInfo: ConfluencePageInfo;
+}
+
+export type FetchPageResponse =
+  | { success: true; content: PageContent }
+  | { success: false; error: string };

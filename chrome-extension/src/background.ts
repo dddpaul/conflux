@@ -1,14 +1,5 @@
 import { fetchPageContent } from "./confluence-api";
-import { ConfluencePageInfo, PageContent } from "./types";
-
-export interface FetchPageMessage {
-  action: "fetchPage";
-  pageInfo: ConfluencePageInfo;
-}
-
-export type FetchPageResponse =
-  | { success: true; content: PageContent }
-  | { success: false; error: string };
+import { FetchPageMessage, FetchPageResponse } from "./types";
 
 chrome.runtime.onMessage.addListener(
   (

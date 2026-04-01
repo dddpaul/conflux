@@ -4,10 +4,26 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 const mockQuery = vi.fn();
 const mockContains = vi.fn();
 const mockRequest = vi.fn();
+const mockSendMessage = vi.fn();
+const mockDownload = vi.fn();
+const mockStorageGet = vi.fn();
 vi.stubGlobal("chrome", {
   tabs: { query: mockQuery },
   permissions: { contains: mockContains, request: mockRequest },
+  runtime: { sendMessage: mockSendMessage },
+  downloads: { download: mockDownload },
+  storage: { sync: { get: mockStorageGet } },
 });
+
+const mockWriteText = vi.fn();
+Object.assign(navigator, {
+  clipboard: { writeText: mockWriteText },
+});
+
+const mockCreateObjectURL = vi.fn(() => "blob:mock-url");
+const mockRevokeObjectURL = vi.fn();
+URL.createObjectURL = mockCreateObjectURL;
+URL.revokeObjectURL = mockRevokeObjectURL;
 
 describe("popup", () => {
   let exportBtn: HTMLButtonElement;
@@ -31,6 +47,13 @@ describe("popup", () => {
     mockQuery.mockReset();
     mockContains.mockReset();
     mockRequest.mockReset();
+    mockSendMessage.mockReset();
+    mockDownload.mockReset();
+    mockStorageGet.mockReset();
+    mockWriteText.mockReset();
+    mockCreateObjectURL.mockReset().mockReturnValue("blob:mock-url");
+    mockRevokeObjectURL.mockReset();
+    mockStorageGet.mockResolvedValue({});
   });
 
   async function loadPopup(
@@ -40,10 +63,16 @@ describe("popup", () => {
     vi.stubGlobal("chrome", {
       tabs: { query: mockQuery },
       permissions: { contains: mockContains, request: mockRequest },
+      runtime: { sendMessage: mockSendMessage },
+      downloads: { download: mockDownload },
+      storage: { sync: { get: mockStorageGet } },
     });
     await import("../src/popup");
     await new Promise((r) => setTimeout(r, 0));
   }
+
+  const confluenceUrl =
+    "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test";
 
   it("disables both buttons on non-Confluence page", async () => {
     await loadPopup([{ url: "https://google.com" }]);
@@ -65,11 +94,7 @@ describe("popup", () => {
   });
 
   it("enables both buttons on Confluence page", async () => {
-    await loadPopup([
-      {
-        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
-      },
-    ]);
+    await loadPopup([{ url: confluenceUrl }]);
 
     expect(exportBtn.disabled).toBe(false);
     expect(copyBtn.disabled).toBe(false);
@@ -78,11 +103,7 @@ describe("popup", () => {
   });
 
   it("shows loading state when export clicked", async () => {
-    await loadPopup([
-      {
-        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
-      },
-    ]);
+    await loadPopup([{ url: confluenceUrl }]);
 
     exportBtn.click();
 
@@ -96,11 +117,7 @@ describe("popup", () => {
   });
 
   it("shows loading state when copy clicked", async () => {
-    await loadPopup([
-      {
-        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
-      },
-    ]);
+    await loadPopup([{ url: confluenceUrl }]);
 
     copyBtn.click();
 
@@ -112,11 +129,7 @@ describe("popup", () => {
   });
 
   it("shows done state with filename", async () => {
-    await loadPopup([
-      {
-        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
-      },
-    ]);
+    await loadPopup([{ url: confluenceUrl }]);
 
     const { render } = await import("../src/popup");
     render({ kind: "done", filename: "Getting-Started.md" });
@@ -130,11 +143,7 @@ describe("popup", () => {
   });
 
   it("shows copied state", async () => {
-    await loadPopup([
-      {
-        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
-      },
-    ]);
+    await loadPopup([{ url: confluenceUrl }]);
 
     const { render } = await import("../src/popup");
     render({ kind: "copied" });
@@ -146,11 +155,7 @@ describe("popup", () => {
   });
 
   it("shows copied confirmation then reverts to idle after 2s", async () => {
-    await loadPopup([
-      {
-        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
-      },
-    ]);
+    await loadPopup([{ url: confluenceUrl }]);
 
     vi.useFakeTimers();
     const { showCopiedConfirmation } = await import("../src/popup");
@@ -170,11 +175,7 @@ describe("popup", () => {
     mockContains.mockResolvedValue(false);
     mockRequest.mockResolvedValue(false);
 
-    await loadPopup([
-      {
-        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
-      },
-    ]);
+    await loadPopup([{ url: confluenceUrl }]);
 
     exportBtn.click();
     await new Promise((r) => setTimeout(r, 0));
@@ -188,11 +189,7 @@ describe("popup", () => {
     mockContains.mockResolvedValue(false);
     mockRequest.mockResolvedValue(false);
 
-    await loadPopup([
-      {
-        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
-      },
-    ]);
+    await loadPopup([{ url: confluenceUrl }]);
 
     copyBtn.click();
     await new Promise((r) => setTimeout(r, 0));
@@ -202,30 +199,8 @@ describe("popup", () => {
     expect(statusDiv.textContent).toBe("Host permission denied");
   });
 
-  it("proceeds when host permission granted", async () => {
-    mockContains.mockResolvedValue(true);
-
-    await loadPopup([
-      {
-        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
-      },
-    ]);
-
-    exportBtn.click();
-    await new Promise((r) => setTimeout(r, 0));
-
-    // After permission granted, button stays disabled (loading state)
-    // because export pipeline is not yet wired (TASK-19)
-    expect(exportBtn.disabled).toBe(true);
-    expect(statusDiv.classList.contains("status-loading")).toBe(true);
-  });
-
   it("shows error state with message", async () => {
-    await loadPopup([
-      {
-        url: "https://myteam.atlassian.net/wiki/spaces/ENG/pages/456/Test",
-      },
-    ]);
+    await loadPopup([{ url: confluenceUrl }]);
 
     const { render } = await import("../src/popup");
     render({ kind: "error", message: "Failed to fetch page" });
@@ -233,5 +208,160 @@ describe("popup", () => {
     expect(exportBtn.disabled).toBe(false);
     expect(statusDiv.classList.contains("status-error")).toBe(true);
     expect(statusDiv.textContent).toBe("Failed to fetch page");
+  });
+
+  describe("export pipeline", () => {
+    it("downloads markdown file on successful export", async () => {
+      mockContains.mockResolvedValue(true);
+      mockSendMessage.mockResolvedValue({
+        success: true,
+        content: { title: "My Page", html: "<p>Hello world</p>" },
+      });
+      mockDownload.mockResolvedValue(undefined);
+
+      await loadPopup([{ url: confluenceUrl }]);
+      exportBtn.click();
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(mockSendMessage).toHaveBeenCalledWith({
+        action: "fetchPage",
+        pageInfo: expect.objectContaining({ pageId: "456" }),
+      });
+      expect(mockDownload).toHaveBeenCalledWith(
+        expect.objectContaining({ filename: "my-page.md" }),
+      );
+      expect(statusDiv.classList.contains("status-done")).toBe(true);
+      expect(statusDiv.textContent).toBe("Saved: my-page.md");
+    });
+
+    it("shows error when fetch fails", async () => {
+      mockContains.mockResolvedValue(true);
+      mockSendMessage.mockResolvedValue({
+        success: false,
+        error: "Page not found",
+      });
+
+      await loadPopup([{ url: confluenceUrl }]);
+      exportBtn.click();
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(statusDiv.classList.contains("status-error")).toBe(true);
+      expect(statusDiv.textContent).toBe("Page not found");
+    });
+
+    it("shows error when sendMessage throws", async () => {
+      mockContains.mockResolvedValue(true);
+      mockSendMessage.mockRejectedValue(
+        new Error("Service worker unavailable"),
+      );
+
+      await loadPopup([{ url: confluenceUrl }]);
+      exportBtn.click();
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(statusDiv.classList.contains("status-error")).toBe(true);
+      expect(statusDiv.textContent).toBe(
+        "Service worker unavailable",
+      );
+    });
+
+    it("shows error when download fails", async () => {
+      mockContains.mockResolvedValue(true);
+      mockSendMessage.mockResolvedValue({
+        success: true,
+        content: { title: "Page", html: "<p>text</p>" },
+      });
+      mockDownload.mockRejectedValue(new Error("Download blocked"));
+
+      await loadPopup([{ url: confluenceUrl }]);
+      exportBtn.click();
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(statusDiv.classList.contains("status-error")).toBe(true);
+      expect(statusDiv.textContent).toBe("Download blocked");
+    });
+
+    it("loads settings and passes to converter", async () => {
+      mockContains.mockResolvedValue(true);
+      mockSendMessage.mockResolvedValue({
+        success: true,
+        content: { title: "Page", html: "<p>text</p>" },
+      });
+      mockDownload.mockResolvedValue(undefined);
+      mockStorageGet.mockResolvedValue({
+        settings: { headingStyle: "setext" },
+      });
+
+      await loadPopup([{ url: confluenceUrl }]);
+      exportBtn.click();
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(mockStorageGet).toHaveBeenCalledWith("settings");
+      expect(statusDiv.classList.contains("status-done")).toBe(true);
+    });
+  });
+
+  describe("copy pipeline", () => {
+    it("copies markdown to clipboard on successful copy", async () => {
+      mockContains.mockResolvedValue(true);
+      mockSendMessage.mockResolvedValue({
+        success: true,
+        content: { title: "My Page", html: "<p>Hello world</p>" },
+      });
+      mockWriteText.mockResolvedValue(undefined);
+
+      await loadPopup([{ url: confluenceUrl }]);
+      copyBtn.click();
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(mockSendMessage).toHaveBeenCalledWith({
+        action: "fetchPage",
+        pageInfo: expect.objectContaining({ pageId: "456" }),
+      });
+      expect(mockWriteText).toHaveBeenCalledWith(
+        expect.stringContaining("# My Page"),
+      );
+      expect(statusDiv.classList.contains("status-copied")).toBe(
+        true,
+      );
+      expect(statusDiv.textContent).toBe("Copied!");
+    });
+
+    it("shows error when fetch fails during copy", async () => {
+      mockContains.mockResolvedValue(true);
+      mockSendMessage.mockResolvedValue({
+        success: false,
+        error: "Authentication required",
+      });
+
+      await loadPopup([{ url: confluenceUrl }]);
+      copyBtn.click();
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(statusDiv.classList.contains("status-error")).toBe(true);
+      expect(statusDiv.textContent).toBe(
+        "Authentication required",
+      );
+    });
+
+    it("shows error when clipboard write fails", async () => {
+      mockContains.mockResolvedValue(true);
+      mockSendMessage.mockResolvedValue({
+        success: true,
+        content: { title: "Page", html: "<p>text</p>" },
+      });
+      mockWriteText.mockRejectedValue(
+        new Error("Clipboard access denied"),
+      );
+
+      await loadPopup([{ url: confluenceUrl }]);
+      copyBtn.click();
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(statusDiv.classList.contains("status-error")).toBe(true);
+      expect(statusDiv.textContent).toBe(
+        "Clipboard access denied",
+      );
+    });
   });
 });
