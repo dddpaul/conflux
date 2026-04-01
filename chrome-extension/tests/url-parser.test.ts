@@ -80,6 +80,20 @@ describe("parseConfluenceUrl", () => {
     });
   });
 
+  describe("Server/DC display format", () => {
+    it("extracts spaceKey and title from display URL", () => {
+      const result = parseConfluenceUrl(
+        "https://confluence.example.com/display/DEV/Getting+Started"
+      );
+      expect(result).toEqual({
+        baseUrl: "https://confluence.example.com",
+        spaceKey: "DEV",
+        pageId: "",
+        pageTitle: "Getting Started",
+      });
+    });
+  });
+
   describe("non-Confluence URLs", () => {
     it("returns null for a generic URL", () => {
       expect(parseConfluenceUrl("https://google.com")).toBeNull();
