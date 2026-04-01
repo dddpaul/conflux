@@ -15,3 +15,17 @@ export interface ExportResult {
   markdown: string;
   filename: string;
 }
+
+export interface ConfluenceApiResponse {
+  title: string;
+  body: {
+    export_view: {
+      value: string;
+    };
+  };
+}
+
+export interface PageContent {
+  title: string;
+  html: string;
+}
