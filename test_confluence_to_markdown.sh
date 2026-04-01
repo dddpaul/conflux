@@ -101,9 +101,32 @@ mock_curl_missing_body() {
     export -f curl
 }
 
+# Mock html2markdown to succeed
+mock_html2markdown_success() {
+    html2markdown() {
+        # Read stdin and convert simple HTML to markdown-like output
+        local input
+        input="$(cat)"
+        # Simple mock: strip tags for testing
+        echo "$input" | sed 's/<[^>]*>//g'
+        return 0
+    }
+    export -f html2markdown
+}
+
+# Mock html2markdown to fail
+mock_html2markdown_failure() {
+    html2markdown() {
+        echo "Error: conversion failed" >&2
+        return 1
+    }
+    export -f html2markdown
+}
+
 # Set up default mocks
 mock_pass_success
 mock_curl_success
+mock_html2markdown_success
 
 # --- URL parsing tests ---
 
@@ -142,10 +165,10 @@ mock_curl_success
 
 # --- API fetch tests ---
 
-# Test: successful fetch extracts title and HTML body
+# Test: successful fetch extracts title and converted markdown body
 output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
 assert_contains "Successful fetch outputs title" "Test Page" "$output"
-assert_contains "Successful fetch outputs HTML body" "<p>Hello</p>" "$output"
+assert_contains "Successful fetch outputs converted markdown (no HTML tags)" "Hello" "$output"
 
 # Test: curl failure returns non-zero and prints error
 mock_curl_http_error
@@ -170,6 +193,75 @@ mock_curl_missing_body
 ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
 assert_eq "Missing body returns non-zero exit code" "1" "$ret"
 assert_contains "Missing body prints error to stderr" "Error:" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
+
+# --- HTML to markdown conversion tests ---
+
+# Restore default mocks
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+
+# Test: html2markdown is called with correct flags
+mock_html2markdown_check_flags() {
+    html2markdown() {
+        local has_plugin_table=0
+        local has_exclude_br=0
+        for arg in "$@"; do
+            [[ "$arg" == "--plugin-table" ]] && has_plugin_table=1
+            [[ "$arg" == "--exclude-selector=br" ]] && has_exclude_br=1
+        done
+        if [[ $has_plugin_table -eq 1 && $has_exclude_br -eq 1 ]]; then
+            echo "flags-ok"
+        else
+            echo "flags-missing: $*" >&2
+            return 1
+        fi
+    }
+    export -f html2markdown
+}
+mock_html2markdown_check_flags
+output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
+assert_contains "html2markdown called with --plugin-table and --exclude-selector=br" "flags-ok" "$output"
+
+# Restore default mocks
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+
+# Test: html2markdown receives HTML body via stdin
+mock_html2markdown_echo_stdin() {
+    html2markdown() {
+        cat
+    }
+    export -f html2markdown
+}
+mock_html2markdown_echo_stdin
+output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
+assert_contains "html2markdown receives HTML body via stdin" "<p>Hello</p>" "$output"
+
+# Test: image URLs are preserved (html2markdown passes them through)
+mock_curl_with_image() {
+    curl() {
+        local json='{"title":"Image Page","body":{"export_view":{"value":"<p><img src=\"https://wiki.example.com/download/attachments/123/image.png\" /></p>"}}}'
+        printf '%s\n%s' "$json" "200"
+    }
+    export -f curl
+}
+mock_curl_with_image
+mock_html2markdown_echo_stdin
+output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
+assert_contains "Image URLs preserved as original Confluence URLs" "https://wiki.example.com/download/attachments/123/image.png" "$output"
+
+# Restore default mocks
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+
+# Test: html2markdown failure returns non-zero and prints error
+mock_html2markdown_failure
+ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
+assert_eq "html2markdown failure returns non-zero exit code" "1" "$ret"
+assert_contains "html2markdown failure prints error to stderr" "Error:" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
