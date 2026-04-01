@@ -5,30 +5,105 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Confluence to Markdown</title>
   <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       width: 320px;
       padding: 16px;
-      font-family: system-ui, sans-serif;
+      font-family: system-ui, -apple-system, sans-serif;
       font-size: 14px;
+      color: #1a1a1a;
+      background: #fff;
     }
+
     h1 {
-      font-size: 16px;
-      margin: 0 0 12px;
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #172b4d;
     }
-    #status {
-      margin: 12px 0;
-      color: #666;
-    }
-    button {
-      padding: 8px 16px;
+
+    #export-btn {
+      width: 100%;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #fff;
+      background: #0052cc;
+      border: none;
+      border-radius: 4px;
       cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    #export-btn:hover:not(:disabled) {
+      background: #0065ff;
+    }
+
+    #export-btn:active:not(:disabled) {
+      background: #0747a6;
+    }
+
+    #export-btn:disabled {
+      background: #dfe1e6;
+      color: #a5adba;
+      cursor: default;
+    }
+
+    #status {
+      margin-top: 10px;
+      font-size: 13px;
+      line-height: 1.4;
+      min-height: 20px;
+    }
+
+    .status-idle {
+      color: #6b778c;
+    }
+
+    .status-loading {
+      color: #0052cc;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-done {
+      color: #006644;
+    }
+
+    .status-error {
+      color: #de350b;
+    }
+
+    .status-disabled {
+      color: #6b778c;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #0052cc;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
   <h1>Confluence to Markdown</h1>
-  <button id="export-btn">Export as Markdown</button>
-  <div id="status"></div>
+  <button id="export-btn" disabled>Export as Markdown</button>
+  <div id="status" class="status-idle"></div>
   <script src="popup.js"></script>
 </body>
 </html>
