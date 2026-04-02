@@ -1,9 +1,11 @@
 ---
 id: TASK-22
 title: Strip style tags from Confluence export_view HTML
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - '@claude'
 created_date: '2026-04-02 05:59'
+updated_date: '2026-04-02 06:03'
 labels: []
 dependencies: []
 ---
@@ -35,10 +37,20 @@ Context:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Turndown rule or HTML pre-processing in src/converter.ts strips all <style> tags
-- [ ] #2 Test file created at tests/toc-style-strip.test.ts
-- [ ] #3 Test reads fixture from tests/fixtures/page-with-toc-style.html
-- [ ] #4 Test asserts no CDATA, rbtoc, or CSS properties in markdown output
-- [ ] #5 Test asserts content headings (Overview, Configuration) are preserved
-- [ ] #6 All existing tests still pass
+- [x] #1 Turndown rule or HTML pre-processing in src/converter.ts strips all <style> tags
+- [x] #2 Test file created at tests/toc-style-strip.test.ts
+- [x] #3 Test reads fixture from tests/fixtures/page-with-toc-style.html
+- [x] #4 Test asserts no CDATA, rbtoc, or CSS properties in markdown output
+- [x] #5 Test asserts content headings (Overview, Configuration) are preserved
+- [x] #6 All existing tests still pass
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Plan: Add a Turndown rule 'stripStyleTag' that filters on STYLE nodes and returns empty string. Place it before other rules in createTurndownService(). Create test file tests/toc-style-strip.test.ts with 6 assertions per AC.
+
+Commit: `f520e3c` - task-22: Strip <style> tags from Confluence HTML before markdown conversion
+
+Implemented: Added stripStyleTag Turndown rule in converter.ts that filters on 'style' elements and returns empty string. Created tests/toc-style-strip.test.ts with 6 assertions. All 137 tests pass.
+<!-- SECTION:NOTES:END -->
