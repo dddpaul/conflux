@@ -99,6 +99,11 @@ function createTurndownService(options: ConverterOptions): TurndownService {
     },
   });
 
+  service.addRule("stripStyleTag", {
+    filter: "style",
+    replacement: () => "",
+  });
+
   service.addRule("confluenceUserMention", {
     filter: (node) => {
       return (
