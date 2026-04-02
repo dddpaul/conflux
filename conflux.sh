@@ -91,3 +91,6 @@ conflux() {
 
     echo "$filename"
 }
+
+# Run as script when executed directly, no-op when sourced
+(return 0 2>/dev/null) || conflux "$@"
