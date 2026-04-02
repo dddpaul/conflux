@@ -228,10 +228,10 @@ describe("popup", () => {
         pageInfo: expect.objectContaining({ pageId: "456" }),
       });
       expect(mockDownload).toHaveBeenCalledWith(
-        expect.objectContaining({ filename: "my-page.md" }),
+        expect.objectContaining({ filename: "My Page.md" }),
       );
       expect(statusDiv.classList.contains("status-done")).toBe(true);
-      expect(statusDiv.textContent).toBe("Saved: my-page.md");
+      expect(statusDiv.textContent).toBe("Saved: My Page.md");
     });
 
     it("shows error when fetch fails", async () => {

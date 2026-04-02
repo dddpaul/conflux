@@ -287,7 +287,7 @@ describe("end-to-end pipeline: fetch → convert → verify", () => {
     expect(result.markdown).toMatch(/-\s+Node\.js 18\+/);
     expect(result.markdown).toContain("**Getting Started**");
     expect(result.markdown).toContain("[a link](https://example.com)");
-    expect(result.filename).toBe("getting-started-guide.md");
+    expect(result.filename).toBe("Getting Started Guide.md");
   });
 
   it("converts tables to GFM markdown", async () => {
@@ -374,9 +374,9 @@ describe("filename sanitization", () => {
     const content = await fetchPageContent(pageInfo("1006"));
     const result = convertHtmlToMarkdown(content.html, content.title);
 
-    // Converter slug-based filename
+    // Converter sanitized filename
     expect(result.filename).toBe(
-      "page-with-specialcharacters-in-title-more.md",
+      "Page with SpecialCharacters in title & more.md",
     );
     // Downloader filename with pageId
     const dlFilename = buildFilename("1006", content.title);

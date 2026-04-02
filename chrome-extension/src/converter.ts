@@ -205,13 +205,10 @@ function normalizeWhitespace(markdown: string): string {
     .trim() + "\n";
 }
 
-function slugifyTitle(title: string): string {
+function sanitizeTitle(title: string): string {
   return title
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(/[/\\:?*"<>|]/g, "")
+    .trim();
 }
 
 export function convertHtmlToMarkdown(
@@ -229,7 +226,7 @@ export function convertHtmlToMarkdown(
   const rawMarkdown = service.turndown(html);
   const collapsed = collapseTableRows(rawMarkdown);
   const markdown = normalizeWhitespace(`# ${title}\n\n${collapsed}`);
-  const filename = `${slugifyTitle(title)}.md`;
+  const filename = `${sanitizeTitle(title)}.md`;
 
   return { markdown, filename };
 }

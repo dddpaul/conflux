@@ -10,7 +10,7 @@ describe("convertHtmlToMarkdown", () => {
 
   it("generates filename from title", () => {
     const result = convertHtmlToMarkdown("<p>hi</p>", "My Page Title");
-    expect(result.filename).toBe("my-page-title.md");
+    expect(result.filename).toBe("My Page Title.md");
   });
 
   it("prepends title as h1 heading", () => {
@@ -289,6 +289,31 @@ describe("convertHtmlToMarkdown", () => {
         macros: { panels: true, expand: true, toc: true, status: false },
       });
       expect(result.markdown).not.toContain("**[DONE]**");
+    });
+  });
+
+  describe("filename generation for non-ASCII titles", () => {
+    it("preserves Cyrillic characters in filename", () => {
+      const result = convertHtmlToMarkdown("<p>hi</p>", "2. Варианты интеграции");
+      expect(result.filename).toBe("2. Варианты интеграции.md");
+    });
+
+    it("removes filesystem-unsafe characters", () => {
+      const result = convertHtmlToMarkdown("<p>hi</p>", "Page with / and : chars");
+      expect(result.filename).toBe("Page with  and  chars.md");
+    });
+
+    it("preserves simple English titles", () => {
+      const result = convertHtmlToMarkdown("<p>hi</p>", "Simple English Title");
+      expect(result.filename).toBe("Simple English Title.md");
+    });
+
+    it("removes all unsafe chars and preserves the rest", () => {
+      const result = convertHtmlToMarkdown(
+        "<p>hi</p>",
+        'a/b\\c:d?e*f"g<h>i|j'
+      );
+      expect(result.filename).toBe("abcdefghij.md");
     });
   });
 });
