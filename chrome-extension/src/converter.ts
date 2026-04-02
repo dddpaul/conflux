@@ -161,6 +161,39 @@ function extractLanguage(node: HTMLElement): string {
   return "";
 }
 
+function collapseTableRows(markdown: string): string {
+  const lines = markdown.split("\n");
+  const result: string[] = [];
+  let pendingRow: string | null = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (pendingRow !== null) {
+      if (trimmed) {
+        pendingRow += " " + trimmed;
+      }
+      if (trimmed.endsWith("|")) {
+        result.push(pendingRow.replace(/ {2,}/g, " "));
+        pendingRow = null;
+      }
+    } else if (trimmed.startsWith("|")) {
+      if (trimmed.endsWith("|")) {
+        result.push(line);
+      } else {
+        pendingRow = trimmed;
+      }
+    } else {
+      result.push(line);
+    }
+  }
+
+  if (pendingRow !== null) {
+    result.push(pendingRow);
+  }
+
+  return result.join("\n");
+}
+
 function normalizeWhitespace(markdown: string): string {
   return markdown
     .replace(/\n{3,}/g, "\n\n")
@@ -189,7 +222,8 @@ export function convertHtmlToMarkdown(
   const service = createTurndownService(mergedOptions);
 
   const rawMarkdown = service.turndown(html);
-  const markdown = normalizeWhitespace(`# ${title}\n\n${rawMarkdown}`);
+  const collapsed = collapseTableRows(rawMarkdown);
+  const markdown = normalizeWhitespace(`# ${title}\n\n${collapsed}`);
   const filename = `${slugifyTitle(title)}.md`;
 
   return { markdown, filename };
