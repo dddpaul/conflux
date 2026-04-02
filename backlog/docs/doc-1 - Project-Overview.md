@@ -7,32 +7,21 @@ created_date: '2026-04-01 14:07'
 
 ## Goal
 
-Bash-функция `confluence-to-markdown` для экспорта отдельных страниц Confluence в markdown-файлы через REST API.
+Conflux — export Confluence pages to Markdown. Two tools: shell function for terminal, Chrome extension for browser.
 
 ## Tech Stack
 
-- Bash (функция для `.bashrc`/`.zshrc`)
-- curl — HTTP-запросы к Confluence REST API
-- jq — парсинг JSON-ответов
-- html2markdown — конвертация HTML в markdown
-- pass — хранение учётных данных
+**Shell function (`conflux.sh`):** Bash, curl, jq, html2markdown, pass
+**Chrome extension (`chrome-extension/`):** TypeScript, esbuild, Turndown.js, turndown-plugin-gfm, vitest
 
 ## Architecture
 
-Одна bash-функция, линейный пайплайн:
-```
-URL → parse(host, pageId) → pass(credentials) → curl(API) → jq(title, html) → html2markdown → file
-```
+**Shell:** `URL → parse(host, pageId) → pass(credentials) → curl(API) → jq(title, html) → html2markdown → file`
+**Extension:** `Tab URL → parse(host, pageId) → permissions → fetch(API + cookies) → Turndown.js → download/clipboard`
+
+Both use the same Confluence REST API endpoint: `GET /rest/api/content/{pageId}?expand=body.export_view`
 
 ## Scope
 
-**In scope:** экспорт одной страницы по URL, sanitization имени файла, минимальная обработка ошибок.
-**Out of scope:** массовый экспорт, скачивание вложений, retry, кэширование.
-
-## Task Dependency Graph
-
-1. task-1: Scaffold function + URL parsing
-2. task-2: Authentication via pass (depends on task-1)
-3. task-3: Fetch page via REST API (depends on task-2)
-4. task-4: Convert HTML to markdown (depends on task-3)
-5. task-5: Save to file with sanitized name (depends on task-4)
+**In scope:** single page export, table/macro conversion, configurable Turndown settings, copy to clipboard, filename sanitization (Unicode-safe).
+**Out of scope:** batch export, attachment download, retry, caching, Firefox/Safari.

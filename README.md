@@ -114,6 +114,10 @@ npm run test     # Run tests (vitest)
 npm run lint     # Lint (eslint)
 ```
 
+## Architecture
+
+See [Chrome Extension Architecture](backlog/docs/doc-2%20-%20Chrome-Extension-Architecture.md) for data flow diagrams, component descriptions, and key design decisions.
+
 ## How It Works
 
 Both tools call the same Confluence REST API endpoint:
