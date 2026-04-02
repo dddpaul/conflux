@@ -1,6 +1,6 @@
-# Confluence to Markdown
+# Conflux
 
-Export Confluence pages to Markdown files. Two independent tools, same principle: fetch the page via the Confluence REST API (`body.export_view`), convert HTML to Markdown, save as `{pageId} - {title}.md`.
+Export Confluence pages to Markdown. Two tools, same principle: fetch the page via the Confluence REST API (`body.export_view`), convert HTML to Markdown, save as `{pageId} - {title}.md`.
 
 ## Comparison
 
@@ -28,7 +28,7 @@ Export Confluence pages to Markdown files. Two independent tools, same principle
 1. Source the function in your shell profile:
 
 ```bash
-source /path/to/confluence-to-markdown.sh
+source /path/to/conflux.sh
 ```
 
 2. Set `CONFLUENCE_PASS_PATH` to your `pass` store entry. The last path segment is used as the login username, and the stored value is the password:
@@ -44,7 +44,7 @@ Alternatively, create a `.env` file in the working directory -- it will be sourc
 ### Usage
 
 ```bash
-confluence-to-markdown "https://confluence.example.com/pages/viewpage.action?pageId=12345"
+conflux "https://confluence.example.com/pages/viewpage.action?pageId=12345"
 # Output: 12345 - Page Title.md
 ```
 
@@ -101,7 +101,7 @@ Right-click the extension icon and select **Options**, or click the settings lin
 bash test_confluence_to_markdown.sh
 
 # Lint
-shellcheck confluence-to-markdown.sh
+shellcheck conflux.sh
 ```
 
 ### Chrome extension

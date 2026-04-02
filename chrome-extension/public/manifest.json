@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Confluence to Markdown",
+  "name": "Conflux",
   "version": "0.1.0",
   "description": "Export Confluence pages as Markdown",
   "permissions": ["activeTab", "downloads", "storage"],
@@ -11,7 +11,7 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Confluence to Markdown"
+    "default_title": "Conflux"
   },
   "options_page": "options.html",
   "icons": {}

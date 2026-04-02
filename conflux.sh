@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 # Confluence page export to markdown
-# Source this file in .bashrc/.zshrc to use the confluence-to-markdown function
+# Source this file in .bashrc/.zshrc to use the conflux function
 
-confluence-to-markdown() {
+conflux() {
     # Load .env from current directory if it exists
     if [[ -f .env ]]; then
         source .env
@@ -19,7 +19,7 @@ confluence-to-markdown() {
     local url="${1:-}"
 
     if [[ -z "$url" ]]; then
-        echo "Usage: confluence-to-markdown <confluence-url>" >&2
+        echo "Usage: conflux <confluence-url>" >&2
         echo "  URL format: https://host/pages/viewpage.action?pageId=123" >&2
         return 1
     fi

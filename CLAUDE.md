@@ -136,11 +136,11 @@ For UI tasks, verify in browser if tools are available (e.g., MCP). Note in task
 
 Two components: shell function and Chrome extension.
 
-### Shell Function (`confluence-to-markdown.sh`)
+### Shell Function (`conflux.sh`)
 
 - **Language:** Bash (compatible with bash and zsh)
-- **Test:** `bash test_confluence_to_markdown.sh`
-- **Lint:** `shellcheck confluence-to-markdown.sh`
+- **Test:** `bash test_conflux.sh`
+- **Lint:** `shellcheck conflux.sh`
 
 ### Chrome Extension (`chrome-extension/`)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for confluence-to-markdown function
+# Tests for conflux function
 
 set -uo pipefail
 
@@ -32,7 +32,8 @@ assert_contains() {
     fi
 }
 
-source /workspace/confluence-to-markdown.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/conflux.sh"
 
 # --- Mock setup ---
 
@@ -136,31 +137,31 @@ export CONFLUENCE_PASS_PATH="ORG/username"
 # Test: missing CONFLUENCE_PASS_PATH returns non-zero and prints error to stderr
 saved_pass_path="$CONFLUENCE_PASS_PATH"
 unset CONFLUENCE_PASS_PATH
-ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>/dev/null || ret=$?
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>/dev/null || ret=$?
 assert_eq "Missing CONFLUENCE_PASS_PATH returns non-zero exit code" "1" "$ret"
-assert_contains "Missing CONFLUENCE_PASS_PATH prints error to stderr" "CONFLUENCE_PASS_PATH" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1 || true)"
+assert_contains "Missing CONFLUENCE_PASS_PATH prints error to stderr" "CONFLUENCE_PASS_PATH" "$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1 || true)"
 export CONFLUENCE_PASS_PATH="$saved_pass_path"
 
 # Test: empty CONFLUENCE_PASS_PATH returns non-zero
 export CONFLUENCE_PASS_PATH=""
-ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>/dev/null || ret=$?
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>/dev/null || ret=$?
 assert_eq "Empty CONFLUENCE_PASS_PATH returns non-zero exit code" "1" "$ret"
 export CONFLUENCE_PASS_PATH="$saved_pass_path"
 
 # --- URL parsing tests ---
 
 # Test: no arguments -> exit 1
-ret=0; confluence-to-markdown 2>/dev/null || ret=$?
+ret=0; conflux 2>/dev/null || ret=$?
 assert_eq "No args returns non-zero exit code" "1" "$ret"
-assert_contains "No args prints usage to stderr" "Usage:" "$(confluence-to-markdown 2>&1 || true)"
+assert_contains "No args prints usage to stderr" "Usage:" "$(conflux 2>&1 || true)"
 
 # Test: invalid URL -> exit 1
-ret=0; confluence-to-markdown "not-a-url" 2>/dev/null || ret=$?
+ret=0; conflux "not-a-url" 2>/dev/null || ret=$?
 assert_eq "Invalid URL returns non-zero exit code" "1" "$ret"
-assert_contains "Invalid URL prints error to stderr" "Error:" "$(confluence-to-markdown "not-a-url" 2>&1 || true)"
+assert_contains "Invalid URL prints error to stderr" "Error:" "$(conflux "not-a-url" 2>&1 || true)"
 
 # Test: URL without pageId -> exit 1
-ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action" 2>/dev/null || ret=$?
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action" 2>/dev/null || ret=$?
 assert_eq "URL without pageId returns non-zero exit code" "1" "$ret"
 
 # --- Authentication via pass tests ---
@@ -168,15 +169,15 @@ assert_eq "URL without pageId returns non-zero exit code" "1" "$ret"
 # Test: pass success returns zero exit code
 mock_pass_success
 mock_curl_success
-ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" >/dev/null 2>&1 || ret=$?
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action?pageId=100" >/dev/null 2>&1 || ret=$?
 assert_eq "pass success returns zero exit code" "0" "$ret"
 
 # Test: pass failure returns non-zero and prints error to stderr
 mock_pass_failure
-ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>/dev/null || ret=$?
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>/dev/null || ret=$?
 assert_eq "pass failure returns non-zero exit code" "1" "$ret"
-assert_contains "pass failure prints error to stderr" "Error:" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1 || true)"
-assert_contains "pass failure mentions pass path" "ORG/username" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1 || true)"
+assert_contains "pass failure prints error to stderr" "Error:" "$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1 || true)"
+assert_contains "pass failure mentions pass path" "ORG/username" "$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1 || true)"
 
 # Restore default mocks
 mock_pass_success
@@ -185,7 +186,7 @@ mock_curl_success
 # --- API fetch tests ---
 
 # Test: successful fetch saves file and outputs filename
-output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
+output=$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
 assert_eq "Successful fetch outputs filename" "123 - Test Page.md" "$output"
 assert_eq "Saved file exists" "0" "$([[ -f "123 - Test Page.md" ]] && echo 0 || echo 1)"
 file_content="$(cat "123 - Test Page.md")"
@@ -195,27 +196,27 @@ rm -f "123 - Test Page.md"
 
 # Test: curl failure returns non-zero and prints error
 mock_curl_http_error
-ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
 assert_eq "curl HTTP error returns non-zero exit code" "1" "$ret"
-assert_contains "curl HTTP error prints error to stderr" "Error:" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
+assert_contains "curl HTTP error prints error to stderr" "Error:" "$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
 
 # Test: invalid JSON returns non-zero and prints error
 mock_curl_invalid_json
-ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
 assert_eq "Invalid JSON returns non-zero exit code" "1" "$ret"
-assert_contains "Invalid JSON prints error to stderr" "Error:" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
+assert_contains "Invalid JSON prints error to stderr" "Error:" "$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
 
 # Test: missing title in JSON returns non-zero
 mock_curl_missing_title
-ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
 assert_eq "Missing title returns non-zero exit code" "1" "$ret"
-assert_contains "Missing title prints error to stderr" "Error:" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
+assert_contains "Missing title prints error to stderr" "Error:" "$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
 
 # Test: missing body in JSON returns non-zero
 mock_curl_missing_body
-ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
 assert_eq "Missing body returns non-zero exit code" "1" "$ret"
-assert_contains "Missing body prints error to stderr" "Error:" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
+assert_contains "Missing body prints error to stderr" "Error:" "$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
 
 # --- HTML to markdown conversion tests ---
 
@@ -243,7 +244,7 @@ mock_html2markdown_check_flags() {
     export -f html2markdown
 }
 mock_html2markdown_check_flags
-output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
+output=$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
 file_content="$(cat "123 - Test Page.md" 2>/dev/null || true)"
 assert_contains "html2markdown called with --plugin-table and --exclude-selector=br" "flags-ok" "$file_content"
 rm -f "123 - Test Page.md"
@@ -261,7 +262,7 @@ mock_html2markdown_echo_stdin() {
     export -f html2markdown
 }
 mock_html2markdown_echo_stdin
-confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
 file_content="$(cat "123 - Test Page.md" 2>/dev/null || true)"
 assert_contains "html2markdown receives HTML body via stdin" "<p>Hello</p>" "$file_content"
 rm -f "123 - Test Page.md"
@@ -276,7 +277,7 @@ mock_curl_with_image() {
 }
 mock_curl_with_image
 mock_html2markdown_echo_stdin
-confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
 file_content="$(cat "123 - Image Page.md" 2>/dev/null || true)"
 assert_contains "Image URLs preserved as original Confluence URLs" "https://wiki.example.com/download/attachments/123/image.png" "$file_content"
 rm -f "123 - Image Page.md"
@@ -288,9 +289,9 @@ mock_html2markdown_success
 
 # Test: html2markdown failure returns non-zero and prints error
 mock_html2markdown_failure
-ret=0; confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>/dev/null || ret=$?
 assert_eq "html2markdown failure returns non-zero exit code" "1" "$ret"
-assert_contains "html2markdown failure prints error to stderr" "Error:" "$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
+assert_contains "html2markdown failure prints error to stderr" "Error:" "$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1 || true)"
 
 # --- File saving and sanitization tests ---
 
@@ -307,14 +308,14 @@ mock_curl_special_title() {
     export -f curl
 }
 mock_curl_special_title
-output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=456" 2>&1)
+output=$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=456" 2>&1)
 assert_eq "Special chars removed from filename" "456 - TestPage ABCDEFGH.md" "$output"
 assert_eq "Sanitized file exists" "0" "$([[ -f "456 - TestPage ABCDEFGH.md" ]] && echo 0 || echo 1)"
 rm -f "456 - TestPage ABCDEFGH.md"
 
 # Test: file contains title heading with original (unsanitized) title
 mock_curl_special_title
-confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=456" >/dev/null 2>&1
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=456" >/dev/null 2>&1
 file_content="$(cat "456 - TestPage ABCDEFGH.md" 2>/dev/null || true)"
 assert_contains "File heading uses original title" 'Test/Page: A?B*C"D<E>F|G\H' "$file_content"
 rm -f "456 - TestPage ABCDEFGH.md"
@@ -323,7 +324,7 @@ rm -f "456 - TestPage ABCDEFGH.md"
 mock_pass_success
 mock_curl_success
 mock_html2markdown_success
-output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=99999" 2>&1)
+output=$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=99999" 2>&1)
 assert_eq "Filename uses correct pageId" "99999 - Test Page.md" "$output"
 rm -f "99999 - Test Page.md"
 
@@ -331,7 +332,7 @@ rm -f "99999 - Test Page.md"
 mock_pass_success
 mock_curl_success
 mock_html2markdown_success
-output=$(confluence-to-markdown "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1)
+output=$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=100" 2>&1)
 assert_eq "Stdout is the file path" "100 - Test Page.md" "$output"
 rm -f "100 - Test Page.md"
 
@@ -353,7 +354,7 @@ mock_curl_check_host() {
 mock_pass_success
 mock_curl_check_host
 mock_html2markdown_success
-output=$(confluence-to-markdown "https://confluence.domain.tld/pages/viewpage.action?pageId=555" 2>&1)
+output=$(conflux "https://confluence.domain.tld/pages/viewpage.action?pageId=555" 2>&1)
 assert_eq "Multi-level subdomain host parsed correctly" "555 - Host Test.md" "$output"
 rm -f "555 - Host Test.md"
 
