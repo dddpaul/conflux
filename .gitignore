@@ -4,3 +4,8 @@
 
 # Environment
 .env
+
+# Ralph loop
+backlog/.ralph-status.json
+backlog/.ralph-run.log
+backlog/.ralph-launch.log
