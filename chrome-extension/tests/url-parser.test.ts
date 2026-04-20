@@ -80,6 +80,44 @@ describe("parseConfluenceUrl", () => {
     });
   });
 
+  describe("Cloud format without /wiki prefix", () => {
+    it("extracts spaceKey and pageId from /spaces/SPACE/pages/ID", () => {
+      const result = parseConfluenceUrl(
+        "https://confluence.example.com/spaces/ARCH/pages/3299440290"
+      );
+      expect(result).toEqual({
+        baseUrl: "https://confluence.example.com",
+        spaceKey: "ARCH",
+        pageId: "3299440290",
+        pageTitle: "",
+      });
+    });
+
+    it("extracts spaceKey, pageId, and encoded title", () => {
+      const result = parseConfluenceUrl(
+        "https://confluence.example.com/spaces/ARCH/pages/3285278961/%D0%9F%D1%80%D0%BE%D0%B4%D1%83%D0%BA%D1%82%D0%BE%D0%B2%D1%8B%D0%B5+%D1%84%D0%B0%D0%B1%D1%80%D0%B8%D0%BA%D0%B8"
+      );
+      expect(result).toEqual({
+        baseUrl: "https://confluence.example.com",
+        spaceKey: "ARCH",
+        pageId: "3285278961",
+        pageTitle: "Продуктовые фабрики",
+      });
+    });
+
+    it("handles /spaces URL with plain English title", () => {
+      const result = parseConfluenceUrl(
+        "https://wiki.corp.com/spaces/DEV/pages/100/Getting+Started"
+      );
+      expect(result).toEqual({
+        baseUrl: "https://wiki.corp.com",
+        spaceKey: "DEV",
+        pageId: "100",
+        pageTitle: "Getting Started",
+      });
+    });
+  });
+
   describe("Server/DC display format", () => {
     it("extracts spaceKey and title from display URL", () => {
       const result = parseConfluenceUrl(

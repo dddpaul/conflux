@@ -4,7 +4,7 @@ const SERVER_VIEWPAGE_PATTERN =
   /\/pages\/viewpage\.action/;
 
 const CLOUD_PAGES_PATTERN =
-  /\/wiki\/spaces\/([^/]+)\/pages\/(\d+)(?:\/([^?#]*))?/;
+  /(?:\/wiki)?\/spaces\/([^/]+)\/pages\/(\d+)(?:\/([^?#]*))?/;
 
 const SERVER_DISPLAY_PATTERN =
   /\/display\/([^/]+)\/([^?#]+)/;
@@ -32,7 +32,7 @@ export function parseConfluenceUrl(
     return { baseUrl, spaceKey, pageId, pageTitle: decodeURIComponent(title) };
   }
 
-  // Cloud: /wiki/spaces/SPACE/pages/123/Title
+  // Cloud: /wiki/spaces/SPACE/pages/123/Title or /spaces/SPACE/pages/123/Title
   const cloudMatch = parsed.pathname.match(CLOUD_PAGES_PATTERN);
   if (cloudMatch) {
     const spaceKey = cloudMatch[1];
