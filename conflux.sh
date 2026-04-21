@@ -20,22 +20,35 @@ conflux() {
 
     if [[ -z "$url" ]]; then
         echo "Usage: conflux <confluence-url>" >&2
-        echo "  URL format: https://host/pages/viewpage.action?pageId=123" >&2
+        echo "  URL formats:" >&2
+        echo "    https://host/pages/viewpage.action?pageId=123" >&2
+        echo "    https://host/wiki/spaces/SPACE/pages/123/Title" >&2
+        echo "    https://host/spaces/SPACE/pages/123" >&2
         return 1
     fi
 
-    # Validate URL format
-    if [[ ! "$url" =~ ^https?://[^/]+/.*pageId=[0-9]+ ]]; then
-        echo "Error: invalid Confluence URL" >&2
-        echo "  Expected format: https://host/pages/viewpage.action?pageId=123" >&2
-        return 1
-    fi
-
-    # Extract host and pageId via parameter expansion (works in both bash and zsh)
+    # Extract host via parameter expansion (works in both bash and zsh)
     local _tmp="${url#*://}"
     local host="${_tmp%%/*}"
-    _tmp="${url#*pageId=}"
-    local page_id="${_tmp%%[!0-9]*}"
+    local page_id
+
+    # Validate URL and extract pageId
+    if [[ "$url" =~ ^https?://[^/]+/.*pageId=[0-9]+ ]]; then
+        # Server/DC: /pages/viewpage.action?pageId=123
+        _tmp="${url#*pageId=}"
+        page_id="${_tmp%%[!0-9]*}"
+    elif [[ "$url" =~ ^https?://[^/]+/(wiki/)?spaces/[^/]+/pages/[0-9]+ ]]; then
+        # Cloud: /spaces/SPACE/pages/123 or /wiki/spaces/SPACE/pages/123/Title
+        _tmp="${url#*/pages/}"
+        page_id="${_tmp%%[!0-9]*}"
+    else
+        echo "Error: invalid Confluence URL" >&2
+        echo "  Expected formats:" >&2
+        echo "    https://host/pages/viewpage.action?pageId=123" >&2
+        echo "    https://host/wiki/spaces/SPACE/pages/123/Title" >&2
+        echo "    https://host/spaces/SPACE/pages/123" >&2
+        return 1
+    fi
 
     # Authenticate via pass utility
     local login password

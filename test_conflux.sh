@@ -358,6 +358,89 @@ output=$(conflux "https://confluence.domain.tld/pages/viewpage.action?pageId=555
 assert_eq "Multi-level subdomain host parsed correctly" "555 - Host Test.md" "$output"
 rm -f "555 - Host Test.md"
 
+# --- /spaces/ URL format tests ---
+
+# Restore default mocks
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+
+# Test: /spaces/SPACE/pages/ID extracts pageId correctly
+mock_curl_check_spaces_pageid() {
+    curl() {
+        local url=""
+        for arg in "$@"; do url="$arg"; done
+        if [[ "$url" == "https://wiki.example.com/rest/api/content/789?expand=body.export_view" ]]; then
+            local json='{"title":"Spaces Page","body":{"export_view":{"value":"<p>spaces</p>"}}}'
+            printf '%s\n%s' "$json" "200"
+        else
+            echo "Wrong API URL: $url" >&2
+            return 22
+        fi
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_check_spaces_pageid
+mock_html2markdown_success
+output=$(conflux "https://wiki.example.com/spaces/TEAM/pages/789" 2>&1)
+assert_eq "/spaces/SPACE/pages/ID extracts pageId" "789 - Spaces Page.md" "$output"
+rm -f "789 - Spaces Page.md"
+
+# Test: /wiki/spaces/SPACE/pages/ID/Title extracts pageId correctly
+mock_pass_success
+mock_curl_check_spaces_pageid
+mock_html2markdown_success
+output=$(conflux "https://wiki.example.com/wiki/spaces/TEAM/pages/789/My+Page+Title" 2>&1)
+assert_eq "/wiki/spaces/SPACE/pages/ID/Title extracts pageId" "789 - Spaces Page.md" "$output"
+rm -f "789 - Spaces Page.md"
+
+# Test: /spaces/SPACE/pages/ID with encoded title extracts pageId correctly
+mock_pass_success
+mock_curl_check_spaces_pageid
+mock_html2markdown_success
+output=$(conflux "https://wiki.example.com/spaces/DEV/pages/789/Some%20Encoded%20Title" 2>&1)
+assert_eq "/spaces/SPACE/pages/ID/encoded-title extracts pageId" "789 - Spaces Page.md" "$output"
+rm -f "789 - Spaces Page.md"
+
+# Test: /wiki/spaces/SPACE/pages/ID (no title) extracts pageId correctly
+mock_pass_success
+mock_curl_check_spaces_pageid
+mock_html2markdown_success
+output=$(conflux "https://wiki.example.com/wiki/spaces/TEAM/pages/789" 2>&1)
+assert_eq "/wiki/spaces/SPACE/pages/ID (no title) extracts pageId" "789 - Spaces Page.md" "$output"
+rm -f "789 - Spaces Page.md"
+
+# Test: existing viewpage.action URL still works after changes
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+output=$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
+assert_eq "viewpage.action URL still works" "123 - Test Page.md" "$output"
+rm -f "123 - Test Page.md"
+
+# Test: /spaces/ URL with multi-level subdomain host
+mock_curl_check_spaces_host() {
+    curl() {
+        local url=""
+        for arg in "$@"; do url="$arg"; done
+        if [[ "$url" == "https://confluence.domain.tld/rest/api/content/321?expand=body.export_view" ]]; then
+            local json='{"title":"Host Spaces","body":{"export_view":{"value":"<p>ok</p>"}}}'
+            printf '%s\n%s' "$json" "200"
+        else
+            echo "Wrong API URL: $url" >&2
+            return 22
+        fi
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_check_spaces_host
+mock_html2markdown_success
+output=$(conflux "https://confluence.domain.tld/wiki/spaces/PROJ/pages/321/Page+Title" 2>&1)
+assert_eq "/spaces/ URL with multi-level subdomain" "321 - Host Spaces.md" "$output"
+rm -f "321 - Host Spaces.md"
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]] || exit 1
