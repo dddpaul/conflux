@@ -75,7 +75,7 @@ mock_pass_failure() {
 # Mock curl to return a valid Confluence API response
 mock_curl_success() {
     curl() {
-        local json='{"title":"Test Page","body":{"export_view":{"value":"<p>Hello</p>"}}}'
+        local json='{"title":"Test Page","body":{"export_view":{"value":"<p>Hello</p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"}}'
         printf '%s\n%s' "$json" "200"
     }
     export -f curl
@@ -101,7 +101,7 @@ mock_curl_invalid_json() {
 # Mock curl to return JSON missing title
 mock_curl_missing_title() {
     curl() {
-        local json='{"body":{"export_view":{"value":"<p>Hello</p>"}}}'
+        local json='{"body":{"export_view":{"value":"<p>Hello</p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"}}'
         printf '%s\n%s' "$json" "200"
     }
     export -f curl
@@ -110,7 +110,7 @@ mock_curl_missing_title() {
 # Mock curl to return JSON missing body
 mock_curl_missing_body() {
     curl() {
-        local json='{"title":"Test Page"}'
+        local json='{"title":"Test Page","history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"}}'
         printf '%s\n%s' "$json" "200"
     }
     export -f curl
@@ -284,7 +284,7 @@ rm -f "123 - Test Page.md"
 # Test: image URLs are preserved (html2markdown passes them through)
 mock_curl_with_image() {
     curl() {
-        local json='{"title":"Image Page","body":{"export_view":{"value":"<p><img src=\"https://wiki.example.com/download/attachments/123/image.png\" /></p>"}}}'
+        local json='{"title":"Image Page","body":{"export_view":{"value":"<p><img src=\"https://wiki.example.com/download/attachments/123/image.png\" /></p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"}}'
         printf '%s\n%s' "$json" "200"
     }
     export -f curl
@@ -316,7 +316,7 @@ mock_html2markdown_success
 # Test: special characters are removed from filename
 mock_curl_special_title() {
     curl() {
-        local json='{"title":"Test/Page: A?B*C\"D<E>F|G\\H","body":{"export_view":{"value":"<p>content</p>"}}}'
+        local json='{"title":"Test/Page: A?B*C\"D<E>F|G\\H","body":{"export_view":{"value":"<p>content</p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"}}'
         printf '%s\n%s' "$json" "200"
     }
     export -f curl
@@ -355,8 +355,8 @@ mock_curl_check_host() {
     curl() {
         local url=""
         for arg in "$@"; do url="$arg"; done
-        if [[ "$url" == "https://confluence.domain.tld/rest/api/content/555?expand=body.export_view" ]]; then
-            local json='{"title":"Host Test","body":{"export_view":{"value":"<p>ok</p>"}}}'
+        if [[ "$url" == "https://confluence.domain.tld/rest/api/content/555?expand=body.export_view,history" ]]; then
+            local json='{"title":"Host Test","body":{"export_view":{"value":"<p>ok</p>"}},"history":{"createdBy":{"displayName":"Jane Smith"},"createdDate":"2023-06-01T08:00:00.000Z"}}'
             printf '%s\n%s' "$json" "200"
         else
             echo "Wrong API URL: $url" >&2
@@ -384,8 +384,8 @@ mock_curl_check_spaces_pageid() {
     curl() {
         local url=""
         for arg in "$@"; do url="$arg"; done
-        if [[ "$url" == "https://wiki.example.com/rest/api/content/789?expand=body.export_view" ]]; then
-            local json='{"title":"Spaces Page","body":{"export_view":{"value":"<p>spaces</p>"}}}'
+        if [[ "$url" == "https://wiki.example.com/rest/api/content/789?expand=body.export_view,history" ]]; then
+            local json='{"title":"Spaces Page","body":{"export_view":{"value":"<p>spaces</p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-03-10T12:00:00.000Z"}}'
             printf '%s\n%s' "$json" "200"
         else
             echo "Wrong API URL: $url" >&2
@@ -438,8 +438,8 @@ mock_curl_check_spaces_host() {
     curl() {
         local url=""
         for arg in "$@"; do url="$arg"; done
-        if [[ "$url" == "https://confluence.domain.tld/rest/api/content/321?expand=body.export_view" ]]; then
-            local json='{"title":"Host Spaces","body":{"export_view":{"value":"<p>ok</p>"}}}'
+        if [[ "$url" == "https://confluence.domain.tld/rest/api/content/321?expand=body.export_view,history" ]]; then
+            local json='{"title":"Host Spaces","body":{"export_view":{"value":"<p>ok</p>"}},"history":{"createdBy":{"displayName":"Jane Smith"},"createdDate":"2023-06-01T08:00:00.000Z"}}'
             printf '%s\n%s' "$json" "200"
         else
             echo "Wrong API URL: $url" >&2
@@ -454,6 +454,142 @@ mock_html2markdown_success
 output=$(conflux "https://confluence.domain.tld/wiki/spaces/PROJ/pages/321/Page+Title" 2>&1)
 assert_eq "/spaces/ URL with multi-level subdomain" "321 - Host Spaces.md" "$output"
 rm -f "321 - Host Spaces.md"
+
+# --- YAML frontmatter tests ---
+
+# Restore default mocks
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+
+# Test: frontmatter block with --- delimiters appears before the heading
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+file_content="$(cat "123 - Test Page.md" 2>/dev/null || true)"
+assert_contains "Frontmatter starts with ---" "---" "$file_content"
+# Check that frontmatter appears before the heading
+first_delimiter_line="$(grep -n '^---$' "123 - Test Page.md" | head -1 | cut -d: -f1)"
+heading_line="$(grep -n '^# ' "123 - Test Page.md" | head -1 | cut -d: -f1)"
+assert_eq "Frontmatter appears before heading" "1" "$([[ "$first_delimiter_line" -lt "$heading_line" ]] && echo 1 || echo 0)"
+rm -f "123 - Test Page.md"
+
+# Test: title field in frontmatter
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+file_content="$(cat "123 - Test Page.md" 2>/dev/null || true)"
+assert_contains "Frontmatter contains title field" 'title: "Test Page"' "$file_content"
+rm -f "123 - Test Page.md"
+
+# Test: source field contains url-decoded original URL
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+conflux "https://wiki.example.com/spaces/DEV/pages/123/Some%20Encoded%20Title" >/dev/null 2>&1
+file_content="$(cat "123 - Test Page.md" 2>/dev/null || true)"
+assert_contains "Source field contains url-decoded URL" 'source: "https://wiki.example.com/spaces/DEV/pages/123/Some Encoded Title"' "$file_content"
+rm -f "123 - Test Page.md"
+
+# Test: author field from API history
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+file_content="$(cat "123 - Test Page.md" 2>/dev/null || true)"
+assert_contains "Frontmatter contains author field" 'author: "John Doe"' "$file_content"
+rm -f "123 - Test Page.md"
+
+# Test: published field from API history (date only)
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+file_content="$(cat "123 - Test Page.md" 2>/dev/null || true)"
+assert_contains "Frontmatter contains published date" "published: 2024-01-15" "$file_content"
+rm -f "123 - Test Page.md"
+
+# Test: created field contains today's date
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+file_content="$(cat "123 - Test Page.md" 2>/dev/null || true)"
+today="$(date +%Y-%m-%d)"
+assert_contains "Frontmatter contains today's created date" "created: $today" "$file_content"
+rm -f "123 - Test Page.md"
+
+# Test: tags field contains confluence
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+file_content="$(cat "123 - Test Page.md" 2>/dev/null || true)"
+assert_contains "Frontmatter contains tags with confluence" '- "confluence"' "$file_content"
+rm -f "123 - Test Page.md"
+
+# Test: id field contains pageId
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+file_content="$(cat "123 - Test Page.md" 2>/dev/null || true)"
+assert_contains "Frontmatter contains id field" "id: 123" "$file_content"
+rm -f "123 - Test Page.md"
+
+# Test: API call includes history expand
+mock_curl_check_expand() {
+    curl() {
+        local url=""
+        for arg in "$@"; do url="$arg"; done
+        if [[ "$url" == *"expand=body.export_view,history"* ]]; then
+            local json='{"title":"Expand Test","body":{"export_view":{"value":"<p>ok</p>"}},"history":{"createdBy":{"displayName":"Test User"},"createdDate":"2024-02-20T09:00:00.000Z"}}'
+            printf '%s\n%s' "$json" "200"
+        else
+            echo "Missing history expand: $url" >&2
+            return 22
+        fi
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_check_expand
+mock_html2markdown_success
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1 || ret=$?
+assert_eq "API call includes history in expand parameter" "0" "$ret"
+rm -f "123 - Expand Test.md"
+
+# Test: frontmatter handles missing history gracefully (empty author/published)
+mock_curl_no_history() {
+    curl() {
+        local json='{"title":"No History","body":{"export_view":{"value":"<p>content</p>"}}}'
+        printf '%s\n%s' "$json" "200"
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_no_history
+mock_html2markdown_success
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1 || ret=$?
+assert_eq "Missing history does not cause failure" "0" "$ret"
+file_content="$(cat "123 - No History.md" 2>/dev/null || true)"
+assert_contains "Frontmatter still present without history" "---" "$file_content"
+rm -f "123 - No History.md"
+
+# Test: title with double quotes is escaped in frontmatter
+mock_curl_quoted_title() {
+    curl() {
+        local json='{"title":"Page \"with\" quotes","body":{"export_view":{"value":"<p>ok</p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"}}'
+        printf '%s\n%s' "$json" "200"
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_quoted_title
+mock_html2markdown_success
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+file_content="$(cat "123 - Page with quotes.md" 2>/dev/null || true)"
+assert_contains "Title with quotes is escaped in frontmatter" 'title: "Page \"with\" quotes"' "$file_content"
+rm -f "123 - Page with quotes.md"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

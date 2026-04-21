@@ -60,7 +60,7 @@ conflux() {
     fi
 
     # Fetch page via Confluence REST API
-    local api_url="https://${host}/rest/api/content/${page_id}?expand=body.export_view"
+    local api_url="https://${host}/rest/api/content/${page_id}?expand=body.export_view,history"
     local response http_code body
 
     response="$(curl -sf -u "${login}:${password}" -w '\n%{http_code}' "$api_url" 2>&1)" || {
@@ -87,6 +87,18 @@ conflux() {
         return 1
     fi
 
+    # Extract metadata for frontmatter
+    local author published
+    author="$(jq -re '.history.createdBy.displayName' <<< "$body" 2>/dev/null || echo "")"
+    published="$(jq -re '.history.createdDate' <<< "$body" 2>/dev/null | head -c 10 || echo "")"
+
+    # URL-decode the source URL (pure bash: convert + to space, %XX to bytes)
+    local source_url
+    source_url="$(printf '%b' "$(echo "$url" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')")"
+
+    local created
+    created="$(date +%Y-%m-%d)"
+
     # Convert HTML to markdown
     local markdown
     if ! markdown="$(echo "$html" | html2markdown --plugin-table --exclude-selector=br 2>&1)"; then
@@ -98,9 +110,20 @@ conflux() {
     local sanitized_title
     sanitized_title="$(echo "$title" | tr -d '/:?*"<>|\\')"
 
+    # Build YAML frontmatter
+    # Double-quote string values for YAML safety
+    local frontmatter
+    frontmatter="$(printf -- '---\ntitle: "%s"\nsource: "%s"\nauthor: "%s"\npublished: %s\ncreated: %s\nid: %s\ntags:\n  - "confluence"\n---' \
+        "${title//\"/\\\"}" \
+        "${source_url//\"/\\\"}" \
+        "${author//\"/\\\"}" \
+        "$published" \
+        "$created" \
+        "$page_id")"
+
     # Save markdown to file
     local filename="${page_id} - ${sanitized_title}.md"
-    printf '# %s\n\n%s\n' "$title" "$markdown" > "$filename"
+    printf '%s\n\n# %s\n\n%s\n' "$frontmatter" "$title" "$markdown" > "$filename"
 
     echo "$filename"
 }
