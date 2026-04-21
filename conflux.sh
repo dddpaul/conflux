@@ -7,6 +7,15 @@ conflux() {
     # Load .env from current directory if it exists
     if [[ -f .env ]]; then
         source .env
+        # Merge NO_PROXY into no_proxy (curl prefers lowercase) and export
+        if [[ -n "${NO_PROXY:-}" && -n "${no_proxy:-}" ]]; then
+            no_proxy="${no_proxy},${NO_PROXY}"
+        elif [[ -n "${NO_PROXY:-}" ]]; then
+            no_proxy="${NO_PROXY}"
+        fi
+        export no_proxy="${no_proxy:-}" \
+               HTTPS_PROXY="${HTTPS_PROXY:-}" HTTP_PROXY="${HTTP_PROXY:-}" \
+               https_proxy="${https_proxy:-}" http_proxy="${http_proxy:-}"
     fi
 
     # Path in pass store: login is the last segment, password is the stored value
