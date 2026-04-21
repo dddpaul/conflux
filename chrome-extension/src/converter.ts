@@ -176,6 +176,31 @@ function extractLanguage(node: HTMLElement): string {
   return "";
 }
 
+function normalizeTableHeaders(html: string): string {
+  return html.replace(
+    /<table\b[^>]*>([\s\S]*?)<\/table>/gi,
+    (_match, inner: string) => {
+      if (/<thead[\s>]/i.test(inner)) return `<table>${inner}</table>`;
+      const firstRowMatch = inner.match(
+        /(<tbody\b[^>]*>\s*)(<tr\b[^>]*>)([\s\S]*?)(<\/tr>)/i,
+      );
+      if (!firstRowMatch) return `<table>${inner}</table>`;
+      const [, beforeRow, trOpen, rowContent, trClose] = firstRowMatch;
+      const promotedRow = rowContent.replace(
+        /<td\b([^>]*)>([\s\S]*?)<\/td>/gi,
+        "<th$1>$2</th>",
+      );
+      const rest = inner.slice(
+        inner.indexOf(firstRowMatch[0]) + firstRowMatch[0].length,
+      );
+      return (
+        `<table><thead>${trOpen}${promotedRow}${trClose}</thead>` +
+        `${beforeRow}${rest}</table>`
+      );
+    },
+  );
+}
+
 function collapseTableRows(markdown: string): string {
   const lines = markdown.split("\n");
   const result: string[] = [];
@@ -255,7 +280,8 @@ export function convertHtmlToMarkdown(
   };
   const service = createTurndownService(mergedOptions);
 
-  const rawMarkdown = service.turndown(html);
+  const normalizedHtml = normalizeTableHeaders(html);
+  const rawMarkdown = service.turndown(normalizedHtml);
   const collapsed = collapseTableRows(rawMarkdown);
   const prefix = meta ? buildFrontmatter(meta) + "\n\n" : "";
   const markdown = normalizeWhitespace(`${prefix}# ${title}\n\n${collapsed}`);

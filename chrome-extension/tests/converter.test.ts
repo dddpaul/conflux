@@ -74,6 +74,77 @@ describe("convertHtmlToMarkdown", () => {
       expect(result.markdown).toContain("| --- | --- |");
       expect(result.markdown).toContain("| foo | bar |");
     });
+
+    it("converts tables without thead (td-only rows)", () => {
+      const html = `
+        <table>
+          <tbody>
+            <tr><td>Header A</td><td>Header B</td></tr>
+            <tr><td>val 1</td><td>val 2</td></tr>
+          </tbody>
+        </table>`;
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("| Header A | Header B |");
+      expect(result.markdown).toContain("| --- | --- |");
+      expect(result.markdown).toContain("| val 1 | val 2 |");
+    });
+
+    it("preserves tables with existing thead (no regression)", () => {
+      const html = `
+        <table>
+          <thead><tr><th>Col1</th><th>Col2</th></tr></thead>
+          <tbody>
+            <tr><td>a</td><td>b</td></tr>
+            <tr><td>c</td><td>d</td></tr>
+          </tbody>
+        </table>`;
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("| Col1 | Col2 |");
+      expect(result.markdown).toContain("| --- | --- |");
+      expect(result.markdown).toContain("| a | b |");
+      expect(result.markdown).toContain("| c | d |");
+    });
+
+    it("converts tables with th cells in tbody first row", () => {
+      const html = `
+        <table>
+          <tbody>
+            <tr><th>Name</th><th>Score</th></tr>
+            <tr><td>Alice</td><td>95</td></tr>
+          </tbody>
+        </table>`;
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("| Name | Score |");
+      expect(result.markdown).toContain("| --- | --- |");
+      expect(result.markdown).toContain("| Alice | 95 |");
+    });
+
+    it("converts real Confluence export_view table HTML", () => {
+      const html = `<div class="table-wrap">
+        <table class="confluenceTable">
+          <colgroup><col style="width: 200px;"><col style="width: 400px;"></colgroup>
+          <tbody>
+            <tr>
+              <td class="confluenceTd">Parameter</td>
+              <td class="confluenceTd">Description</td>
+            </tr>
+            <tr>
+              <td class="confluenceTd">timeout</td>
+              <td class="confluenceTd">Request timeout in ms</td>
+            </tr>
+            <tr>
+              <td class="confluenceTd">retries</td>
+              <td class="confluenceTd">Number of retry attempts</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
+      const result = convertHtmlToMarkdown(html, "Test");
+      expect(result.markdown).toContain("| Parameter | Description |");
+      expect(result.markdown).toContain("| --- | --- |");
+      expect(result.markdown).toContain("| timeout | Request timeout in ms |");
+      expect(result.markdown).toContain("| retries | Number of retry attempts |");
+    });
   });
 
   describe("Confluence code blocks", () => {
