@@ -69,7 +69,7 @@ conflux() {
     fi
 
     # Fetch page via Confluence REST API
-    local api_url="https://${host}/rest/api/content/${page_id}?expand=body.export_view,history"
+    local api_url="https://${host}/rest/api/content/${page_id}?expand=body.export_view,history,space"
     local response http_code body
 
     response="$(curl -sf -u "${login}:${password}" -w '\n%{http_code}' "$api_url" 2>&1)" || {
@@ -97,7 +97,8 @@ conflux() {
     fi
 
     # Extract metadata for frontmatter
-    local author published
+    local space_key author published
+    space_key="$(jq -re '.space.key // empty' <<< "$body" 2>/dev/null || echo "")"
     author="$(jq -re '.history.createdBy.displayName' <<< "$body" 2>/dev/null || echo "")"
     published="$(jq -re '.history.createdDate' <<< "$body" 2>/dev/null | head -c 10 || echo "")"
 
@@ -131,7 +132,12 @@ conflux() {
         "$page_id")"
 
     # Save markdown to file
-    local filename="${page_id} - ${sanitized_title}.md"
+    local filename
+    if [[ -n "$space_key" ]]; then
+        filename="${space_key} - ${sanitized_title}.md"
+    else
+        filename="${page_id} - ${sanitized_title}.md"
+    fi
     printf '%s\n\n# %s\n\n%s\n' "$frontmatter" "$title" "$markdown" > "$filename"
 
     echo "$filename"
