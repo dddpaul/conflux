@@ -12,6 +12,7 @@ import type { ConfluencePageInfo, ConfluenceApiResponse } from "../src/types";
 
 const PAGES: Record<string, ConfluenceApiResponse> = {
   "1001": {
+    id: "1001",
     title: "Getting Started Guide",
     body: {
       export_view: {
@@ -29,6 +30,7 @@ const PAGES: Record<string, ConfluenceApiResponse> = {
     },
   },
   "1002": {
+    id: "1002",
     title: "Data Model Reference",
     body: {
       export_view: {
@@ -49,6 +51,7 @@ const PAGES: Record<string, ConfluenceApiResponse> = {
     },
   },
   "1003": {
+    id: "1003",
     title: "API Examples",
     body: {
       export_view: {
@@ -69,6 +72,7 @@ console.log(data);</pre>
     },
   },
   "1004": {
+    id: "1004",
     title: "Deployment Runbook",
     body: {
       export_view: {
@@ -99,6 +103,7 @@ console.log(data);</pre>
     },
   },
   "1005": {
+    id: "1005",
     title: "Team Status & Mentions",
     body: {
       export_view: {
@@ -113,6 +118,7 @@ console.log(data);</pre>
     },
   },
   "1006": {
+    id: "1006",
     title: "Page with Special/Characters: in <title> & more*",
     body: {
       export_view: {
@@ -140,7 +146,7 @@ function createMockServer(): Promise<{ server: Server; port: number }> {
         const { pageId } = req.params;
         const expand = req.query.expand as string;
 
-        if (expand !== "body.export_view") {
+        if (expand !== "body.export_view,history") {
           res.status(400).json({ message: "Missing expand parameter" });
           return;
         }

@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { convertHtmlToMarkdown } from "../src/converter";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { convertHtmlToMarkdown, buildFrontmatter, FrontmatterMeta } from "../src/converter";
 
 describe("convertHtmlToMarkdown", () => {
   it("returns an ExportResult with markdown and filename", () => {
@@ -314,6 +314,102 @@ describe("convertHtmlToMarkdown", () => {
         'a/b\\c:d?e*f"g<h>i|j'
       );
       expect(result.filename).toBe("abcdefghij.md");
+    });
+  });
+
+  describe("YAML frontmatter", () => {
+    const fixedDate = "2026-04-21";
+    let dateSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      dateSpy = vi.spyOn(Date.prototype, "toISOString")
+        .mockReturnValue(`${fixedDate}T00:00:00.000Z`);
+    });
+
+    afterEach(() => {
+      dateSpy.mockRestore();
+    });
+
+    const baseMeta: FrontmatterMeta = {
+      title: "My Page",
+      source: "https://wiki.example.com/pages/viewpage.action?pageId=12345",
+      author: "John Doe",
+      published: "2025-01-15",
+      pageId: "12345",
+    };
+
+    it("buildFrontmatter produces correct YAML block", () => {
+      const fm = buildFrontmatter(baseMeta);
+      expect(fm).toBe(
+        [
+          "---",
+          'title: "My Page"',
+          'source: "https://wiki.example.com/pages/viewpage.action?pageId=12345"',
+          'author: "John Doe"',
+          "published: 2025-01-15",
+          `created: ${fixedDate}`,
+          "id: 12345",
+          "tags:",
+          '  - "confluence"',
+          "---",
+        ].join("\n"),
+      );
+    });
+
+    it("frontmatter appears before # heading when meta is provided", () => {
+      const result = convertHtmlToMarkdown(
+        "<p>content</p>",
+        "My Page",
+        {},
+        baseMeta,
+      );
+      expect(result.markdown).toMatch(/^---\n/);
+      expect(result.markdown).toMatch(/---\n\n# My Page\n/);
+    });
+
+    it("all required fields are present in frontmatter", () => {
+      const result = convertHtmlToMarkdown(
+        "<p>content</p>",
+        "My Page",
+        {},
+        baseMeta,
+      );
+      expect(result.markdown).toContain('title: "My Page"');
+      expect(result.markdown).toContain('source: "https://wiki.example.com');
+      expect(result.markdown).toContain('author: "John Doe"');
+      expect(result.markdown).toContain("published: 2025-01-15");
+      expect(result.markdown).toContain(`created: ${fixedDate}`);
+      expect(result.markdown).toContain("id: 12345");
+      expect(result.markdown).toContain('  - "confluence"');
+    });
+
+    it("no frontmatter when meta is not provided", () => {
+      const result = convertHtmlToMarkdown("<p>content</p>", "Page");
+      expect(result.markdown).toMatch(/^# Page\n/);
+      expect(result.markdown).not.toContain("---");
+    });
+
+    it("escapes double quotes in YAML string values", () => {
+      const meta: FrontmatterMeta = {
+        ...baseMeta,
+        title: 'Page with "quotes"',
+        author: 'John "JD" Doe',
+      };
+      const fm = buildFrontmatter(meta);
+      expect(fm).toContain('title: "Page with \\"quotes\\""');
+      expect(fm).toContain('author: "John \\"JD\\" Doe"');
+    });
+
+    it("falls back to created date when published is empty", () => {
+      const meta: FrontmatterMeta = { ...baseMeta, published: "" };
+      const fm = buildFrontmatter(meta);
+      expect(fm).toContain(`published: ${fixedDate}`);
+    });
+
+    it("handles empty author gracefully", () => {
+      const meta: FrontmatterMeta = { ...baseMeta, author: "" };
+      const fm = buildFrontmatter(meta);
+      expect(fm).toContain('author: ""');
     });
   });
 });

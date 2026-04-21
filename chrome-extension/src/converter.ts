@@ -2,6 +2,14 @@ import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 import { ConversionOptions, ExportResult, MacroToggles } from "./types";
 
+export interface FrontmatterMeta {
+  title: string;
+  source: string;
+  author: string;
+  published: string;
+  pageId: string;
+}
+
 interface ConverterOptions extends ConversionOptions {
   brHandling?: "remove" | "newline" | "keep";
   macros?: MacroToggles;
@@ -211,10 +219,32 @@ function sanitizeTitle(title: string): string {
     .trim();
 }
 
+function escapeYamlString(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+export function buildFrontmatter(meta: FrontmatterMeta): string {
+  const created = new Date().toISOString().slice(0, 10);
+  const lines = [
+    "---",
+    `title: "${escapeYamlString(meta.title)}"`,
+    `source: "${escapeYamlString(meta.source)}"`,
+    `author: "${escapeYamlString(meta.author)}"`,
+    `published: ${meta.published || created}`,
+    `created: ${created}`,
+    `id: ${meta.pageId}`,
+    "tags:",
+    '  - "confluence"',
+    "---",
+  ];
+  return lines.join("\n");
+}
+
 export function convertHtmlToMarkdown(
   html: string,
   title: string,
   options?: Partial<ConverterOptions>,
+  meta?: FrontmatterMeta,
 ): ExportResult {
   const mergedOptions: ConverterOptions = {
     ...DEFAULT_OPTIONS,
@@ -225,7 +255,8 @@ export function convertHtmlToMarkdown(
 
   const rawMarkdown = service.turndown(html);
   const collapsed = collapseTableRows(rawMarkdown);
-  const markdown = normalizeWhitespace(`# ${title}\n\n${collapsed}`);
+  const prefix = meta ? buildFrontmatter(meta) + "\n\n" : "";
+  const markdown = normalizeWhitespace(`${prefix}# ${title}\n\n${collapsed}`);
   const filename = `${sanitizeTitle(title)}.md`;
 
   return { markdown, filename };

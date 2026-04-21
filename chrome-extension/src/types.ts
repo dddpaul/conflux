@@ -32,17 +32,28 @@ export interface ExportResult {
 }
 
 export interface ConfluenceApiResponse {
+  id: string;
   title: string;
   body: {
     export_view: {
       value: string;
     };
   };
+  history?: {
+    createdBy?: {
+      displayName?: string;
+    };
+    createdDate?: string;
+  };
 }
 
 export interface PageContent {
   title: string;
   html: string;
+  author: string;
+  published: string;
+  pageId: string;
+  sourceUrl: string;
 }
 
 export interface FetchPageMessage {

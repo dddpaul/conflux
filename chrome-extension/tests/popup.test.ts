@@ -215,7 +215,14 @@ describe("popup", () => {
       mockContains.mockResolvedValue(true);
       mockSendMessage.mockResolvedValue({
         success: true,
-        content: { title: "My Page", html: "<p>Hello world</p>" },
+        content: {
+          title: "My Page",
+          html: "<p>Hello world</p>",
+          author: "Test Author",
+          published: "2025-01-01",
+          pageId: "456",
+          sourceUrl: "https://myteam.atlassian.net/pages/viewpage.action?pageId=456",
+        },
       });
       mockDownload.mockResolvedValue(undefined);
 
@@ -269,7 +276,14 @@ describe("popup", () => {
       mockContains.mockResolvedValue(true);
       mockSendMessage.mockResolvedValue({
         success: true,
-        content: { title: "Page", html: "<p>text</p>" },
+        content: {
+          title: "Page",
+          html: "<p>text</p>",
+          author: "",
+          published: "",
+          pageId: "456",
+          sourceUrl: "https://myteam.atlassian.net/pages/viewpage.action?pageId=456",
+        },
       });
       mockDownload.mockRejectedValue(new Error("Download blocked"));
 
@@ -285,7 +299,14 @@ describe("popup", () => {
       mockContains.mockResolvedValue(true);
       mockSendMessage.mockResolvedValue({
         success: true,
-        content: { title: "Page", html: "<p>text</p>" },
+        content: {
+          title: "Page",
+          html: "<p>text</p>",
+          author: "",
+          published: "",
+          pageId: "456",
+          sourceUrl: "https://myteam.atlassian.net/pages/viewpage.action?pageId=456",
+        },
       });
       mockDownload.mockResolvedValue(undefined);
       mockStorageGet.mockResolvedValue({
@@ -306,7 +327,14 @@ describe("popup", () => {
       mockContains.mockResolvedValue(true);
       mockSendMessage.mockResolvedValue({
         success: true,
-        content: { title: "My Page", html: "<p>Hello world</p>" },
+        content: {
+          title: "My Page",
+          html: "<p>Hello world</p>",
+          author: "Test Author",
+          published: "2025-01-01",
+          pageId: "456",
+          sourceUrl: "https://myteam.atlassian.net/pages/viewpage.action?pageId=456",
+        },
       });
       mockWriteText.mockResolvedValue(undefined);
 
@@ -348,7 +376,14 @@ describe("popup", () => {
       mockContains.mockResolvedValue(true);
       mockSendMessage.mockResolvedValue({
         success: true,
-        content: { title: "Page", html: "<p>text</p>" },
+        content: {
+          title: "Page",
+          html: "<p>text</p>",
+          author: "",
+          published: "",
+          pageId: "456",
+          sourceUrl: "https://myteam.atlassian.net/pages/viewpage.action?pageId=456",
+        },
       });
       mockWriteText.mockRejectedValue(
         new Error("Clipboard access denied"),

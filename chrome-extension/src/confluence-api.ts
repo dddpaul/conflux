@@ -2,7 +2,7 @@ import { ConfluencePageInfo, ConfluenceApiResponse, PageContent } from "./types"
 
 function buildApiUrl(pageInfo: ConfluencePageInfo): string {
   const base = pageInfo.baseUrl.replace(/\/+$/, "");
-  return `${base}/rest/api/content/${pageInfo.pageId}?expand=body.export_view`;
+  return `${base}/rest/api/content/${pageInfo.pageId}?expand=body.export_view,history`;
 }
 
 function errorMessageForStatus(status: number): string {
@@ -21,6 +21,13 @@ function errorMessageForStatus(status: number): string {
   }
 }
 
+function buildSourceUrl(pageInfo: ConfluencePageInfo): string {
+  const base = pageInfo.baseUrl.replace(/\/+$/, "");
+  return decodeURIComponent(
+    `${base}/pages/viewpage.action?pageId=${pageInfo.pageId}`,
+  );
+}
+
 export async function fetchPageContent(
   pageInfo: ConfluencePageInfo,
 ): Promise<PageContent> {
@@ -36,8 +43,16 @@ export async function fetchPageContent(
   }
 
   const data = (await response.json()) as ConfluenceApiResponse;
+  const author = data.history?.createdBy?.displayName ?? "";
+  const rawDate = data.history?.createdDate ?? "";
+  const published = rawDate.slice(0, 10);
+
   return {
     title: data.title,
     html: data.body.export_view.value,
+    author,
+    published,
+    pageId: data.id,
+    sourceUrl: buildSourceUrl(pageInfo),
   };
 }

@@ -1,6 +1,6 @@
 import { parseConfluenceUrl } from "./url-parser";
 import { ensureHostPermission } from "./permissions";
-import { convertHtmlToMarkdown } from "./converter";
+import { convertHtmlToMarkdown, FrontmatterMeta } from "./converter";
 import { downloadMarkdown } from "./downloader";
 import { copyToClipboard } from "./clipboard";
 import { loadSettings } from "./settings";
@@ -135,10 +135,18 @@ async function init(): Promise<void> {
         return;
       }
       const settings = await loadSettings();
+      const meta: FrontmatterMeta = {
+        title: response.content.title,
+        source: response.content.sourceUrl,
+        author: response.content.author,
+        published: response.content.published,
+        pageId: response.content.pageId,
+      };
       const { markdown, filename } = convertHtmlToMarkdown(
         response.content.html,
         response.content.title,
         settings,
+        meta,
       );
       await downloadMarkdown(markdown, filename);
       render({ kind: "done", filename });
@@ -163,10 +171,18 @@ async function init(): Promise<void> {
         return;
       }
       const settings = await loadSettings();
+      const meta: FrontmatterMeta = {
+        title: response.content.title,
+        source: response.content.sourceUrl,
+        author: response.content.author,
+        published: response.content.published,
+        pageId: response.content.pageId,
+      };
       const { markdown } = convertHtmlToMarkdown(
         response.content.html,
         response.content.title,
         settings,
+        meta,
       );
       await copyToClipboard(markdown);
       showCopiedConfirmation();

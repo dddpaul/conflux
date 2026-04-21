@@ -38,7 +38,7 @@ describe("fetchPageContent", () => {
     await fetchPageContent(mockPageInfo);
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      "https://confluence.example.com/rest/api/content/12345?expand=body.export_view",
+      "https://confluence.example.com/rest/api/content/12345?expand=body.export_view,history",
       {
         credentials: "include",
         headers: { Accept: "application/json" },
@@ -48,8 +48,13 @@ describe("fetchPageContent", () => {
 
   it("returns title and html from API response", async () => {
     const apiResponse = {
+      id: "12345",
       title: "My Page Title",
       body: { export_view: { value: "<h1>Content</h1>" } },
+      history: {
+        createdBy: { displayName: "John Doe" },
+        createdDate: "2025-01-15T10:00:00.000Z",
+      },
     };
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       mockFetchResponse(apiResponse),
@@ -60,6 +65,10 @@ describe("fetchPageContent", () => {
     expect(result).toEqual({
       title: "My Page Title",
       html: "<h1>Content</h1>",
+      author: "John Doe",
+      published: "2025-01-15",
+      pageId: "12345",
+      sourceUrl: "https://confluence.example.com/pages/viewpage.action?pageId=12345",
     });
   });
 
