@@ -221,6 +221,7 @@ describe("popup", () => {
           author: "Test Author",
           published: "2025-01-01",
           pageId: "456",
+          spaceKey: "ENG",
           sourceUrl: "https://myteam.atlassian.net/pages/viewpage.action?pageId=456",
         },
       });
@@ -235,10 +236,10 @@ describe("popup", () => {
         pageInfo: expect.objectContaining({ pageId: "456" }),
       });
       expect(mockDownload).toHaveBeenCalledWith(
-        expect.objectContaining({ filename: "My Page.md" }),
+        expect.objectContaining({ filename: "ENG - My Page.md" }),
       );
       expect(statusDiv.classList.contains("status-done")).toBe(true);
-      expect(statusDiv.textContent).toBe("Saved: My Page.md");
+      expect(statusDiv.textContent).toBe("Saved: ENG - My Page.md");
     });
 
     it("shows error when fetch fails", async () => {
@@ -282,6 +283,7 @@ describe("popup", () => {
           author: "",
           published: "",
           pageId: "456",
+          spaceKey: "ENG",
           sourceUrl: "https://myteam.atlassian.net/pages/viewpage.action?pageId=456",
         },
       });
@@ -305,6 +307,7 @@ describe("popup", () => {
           author: "",
           published: "",
           pageId: "456",
+          spaceKey: "ENG",
           sourceUrl: "https://myteam.atlassian.net/pages/viewpage.action?pageId=456",
         },
       });
@@ -333,6 +336,7 @@ describe("popup", () => {
           author: "Test Author",
           published: "2025-01-01",
           pageId: "456",
+          spaceKey: "ENG",
           sourceUrl: "https://myteam.atlassian.net/pages/viewpage.action?pageId=456",
         },
       });
@@ -382,6 +386,7 @@ describe("popup", () => {
           author: "",
           published: "",
           pageId: "456",
+          spaceKey: "ENG",
           sourceUrl: "https://myteam.atlassian.net/pages/viewpage.action?pageId=456",
         },
       });

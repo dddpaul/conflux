@@ -45,6 +45,9 @@ export interface ConfluenceApiResponse {
     };
     createdDate?: string;
   };
+  space?: {
+    key?: string;
+  };
 }
 
 export interface PageContent {
@@ -53,6 +56,7 @@ export interface PageContent {
   author: string;
   published: string;
   pageId: string;
+  spaceKey: string;
   sourceUrl: string;
 }
 

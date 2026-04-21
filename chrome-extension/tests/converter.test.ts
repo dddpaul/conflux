@@ -8,7 +8,7 @@ describe("convertHtmlToMarkdown", () => {
     expect(result).toHaveProperty("filename");
   });
 
-  it("generates filename from title", () => {
+  it("generates filename from title when no meta", () => {
     const result = convertHtmlToMarkdown("<p>hi</p>", "My Page Title");
     expect(result.filename).toBe("My Page Title.md");
   });
@@ -336,6 +336,7 @@ describe("convertHtmlToMarkdown", () => {
       author: "John Doe",
       published: "2025-01-15",
       pageId: "12345",
+      spaceKey: "ENG",
     };
 
     it("buildFrontmatter produces correct YAML block", () => {
@@ -387,6 +388,27 @@ describe("convertHtmlToMarkdown", () => {
       const result = convertHtmlToMarkdown("<p>content</p>", "Page");
       expect(result.markdown).toMatch(/^# Page\n/);
       expect(result.markdown).not.toContain("---");
+    });
+
+    it("generates filename with spaceKey prefix when meta provided", () => {
+      const result = convertHtmlToMarkdown(
+        "<p>content</p>",
+        "My Page",
+        {},
+        baseMeta,
+      );
+      expect(result.filename).toBe("ENG - My Page.md");
+    });
+
+    it("falls back to pageId in filename when spaceKey is empty", () => {
+      const meta: FrontmatterMeta = { ...baseMeta, spaceKey: "" };
+      const result = convertHtmlToMarkdown(
+        "<p>content</p>",
+        "My Page",
+        {},
+        meta,
+      );
+      expect(result.filename).toBe("12345 - My Page.md");
     });
 
     it("escapes double quotes in YAML string values", () => {

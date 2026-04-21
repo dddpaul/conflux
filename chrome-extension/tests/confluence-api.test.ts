@@ -38,7 +38,7 @@ describe("fetchPageContent", () => {
     await fetchPageContent(mockPageInfo);
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      "https://confluence.example.com/rest/api/content/12345?expand=body.export_view,history",
+      "https://confluence.example.com/rest/api/content/12345?expand=body.export_view,history,space",
       {
         credentials: "include",
         headers: { Accept: "application/json" },
@@ -68,6 +68,7 @@ describe("fetchPageContent", () => {
       author: "John Doe",
       published: "2025-01-15",
       pageId: "12345",
+      spaceKey: "DEV",
       sourceUrl: "https://confluence.example.com/pages/viewpage.action?pageId=12345",
     });
   });

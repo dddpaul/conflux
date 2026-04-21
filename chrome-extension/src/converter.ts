@@ -1,6 +1,7 @@
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 import { ConversionOptions, ExportResult, MacroToggles } from "./types";
+import { buildFilename } from "./downloader";
 
 export interface FrontmatterMeta {
   title: string;
@@ -8,6 +9,7 @@ export interface FrontmatterMeta {
   author: string;
   published: string;
   pageId: string;
+  spaceKey: string;
 }
 
 interface ConverterOptions extends ConversionOptions {
@@ -257,7 +259,9 @@ export function convertHtmlToMarkdown(
   const collapsed = collapseTableRows(rawMarkdown);
   const prefix = meta ? buildFrontmatter(meta) + "\n\n" : "";
   const markdown = normalizeWhitespace(`${prefix}# ${title}\n\n${collapsed}`);
-  const filename = `${sanitizeTitle(title)}.md`;
+  const filename = meta
+    ? buildFilename(meta.spaceKey, meta.pageId, title)
+    : `${sanitizeTitle(title)}.md`;
 
   return { markdown, filename };
 }

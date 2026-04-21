@@ -141,6 +141,7 @@ async function init(): Promise<void> {
         author: response.content.author,
         published: response.content.published,
         pageId: response.content.pageId,
+        spaceKey: response.content.spaceKey,
       };
       const { markdown, filename } = convertHtmlToMarkdown(
         response.content.html,
@@ -177,6 +178,7 @@ async function init(): Promise<void> {
         author: response.content.author,
         published: response.content.published,
         pageId: response.content.pageId,
+        spaceKey: response.content.spaceKey,
       };
       const { markdown } = convertHtmlToMarkdown(
         response.content.html,

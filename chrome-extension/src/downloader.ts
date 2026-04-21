@@ -2,8 +2,13 @@ export function sanitizeTitle(title: string): string {
   return title.replace(/[/:?*<>|\\]/g, "").replace(/\s+/g, " ").trim();
 }
 
-export function buildFilename(pageId: string, title: string): string {
-  return `${pageId} - ${sanitizeTitle(title)}.md`;
+export function buildFilename(
+  spaceKey: string,
+  pageId: string,
+  title: string,
+): string {
+  const prefix = spaceKey || pageId;
+  return `${prefix} - ${sanitizeTitle(title)}.md`;
 }
 
 export async function downloadMarkdown(

@@ -54,13 +54,17 @@ describe("sanitizeTitle", () => {
 });
 
 describe("buildFilename", () => {
-  it("combines pageId and sanitized title", () => {
-    expect(buildFilename("12345", "My Page")).toBe("12345 - My Page.md");
+  it("uses spaceKey as prefix when available", () => {
+    expect(buildFilename("ENG", "12345", "My Page")).toBe("ENG - My Page.md");
+  });
+
+  it("falls back to pageId when spaceKey is empty", () => {
+    expect(buildFilename("", "12345", "My Page")).toBe("12345 - My Page.md");
   });
 
   it("sanitizes special characters in title", () => {
-    expect(buildFilename("99", "Draft: How to <test>?")).toBe(
-      "99 - Draft How to test.md",
+    expect(buildFilename("DEV", "99", "Draft: How to <test>?")).toBe(
+      "DEV - Draft How to test.md",
     );
   });
 });

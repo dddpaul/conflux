@@ -146,7 +146,7 @@ function createMockServer(): Promise<{ server: Server; port: number }> {
         const { pageId } = req.params;
         const expand = req.query.expand as string;
 
-        if (expand !== "body.export_view,history") {
+        if (expand !== "body.export_view,history,space") {
           res.status(400).json({ message: "Missing expand parameter" });
           return;
         }
@@ -360,8 +360,18 @@ describe("filename sanitization", () => {
     expect(sanitized).toContain("& more");
   });
 
-  it("builds filename with pageId and sanitized title", () => {
+  it("builds filename with spaceKey and sanitized title", () => {
     const filename = buildFilename(
+      "TEST",
+      "1006",
+      "Page with Special/Characters: in <title> & more*",
+    );
+    expect(filename).toBe("TEST - Page with SpecialCharacters in title & more.md");
+  });
+
+  it("builds filename with pageId fallback when spaceKey is empty", () => {
+    const filename = buildFilename(
+      "",
       "1006",
       "Page with Special/Characters: in <title> & more*",
     );
@@ -384,9 +394,9 @@ describe("filename sanitization", () => {
     expect(result.filename).toBe(
       "Page with SpecialCharacters in title & more.md",
     );
-    // Downloader filename with pageId
-    const dlFilename = buildFilename("1006", content.title);
-    expect(dlFilename).toMatch(/^1006 - /);
+    // Downloader filename with spaceKey prefix
+    const dlFilename = buildFilename("TEST", "1006", content.title);
+    expect(dlFilename).toMatch(/^TEST - /);
     expect(dlFilename).toMatch(/\.md$/);
     expect(dlFilename).not.toMatch(/[/:?*<>|\\]/);
   });

@@ -2,7 +2,7 @@ import { ConfluencePageInfo, ConfluenceApiResponse, PageContent } from "./types"
 
 function buildApiUrl(pageInfo: ConfluencePageInfo): string {
   const base = pageInfo.baseUrl.replace(/\/+$/, "");
-  return `${base}/rest/api/content/${pageInfo.pageId}?expand=body.export_view,history`;
+  return `${base}/rest/api/content/${pageInfo.pageId}?expand=body.export_view,history,space`;
 }
 
 function errorMessageForStatus(status: number): string {
@@ -46,6 +46,7 @@ export async function fetchPageContent(
   const author = data.history?.createdBy?.displayName ?? "";
   const rawDate = data.history?.createdDate ?? "";
   const published = rawDate.slice(0, 10);
+  const spaceKey = data.space?.key || pageInfo.spaceKey;
 
   return {
     title: data.title,
@@ -53,6 +54,7 @@ export async function fetchPageContent(
     author,
     published,
     pageId: data.id,
+    spaceKey,
     sourceUrl: buildSourceUrl(pageInfo),
   };
 }
