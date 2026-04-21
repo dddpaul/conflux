@@ -33,6 +33,20 @@ assert_contains() {
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# --- Environment isolation ---
+# Hide .env so conflux()'s `source .env` cannot override test variables
+_test_env_hidden=0
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+    mv "$SCRIPT_DIR/.env" "$SCRIPT_DIR/.env.test-backup"
+    _test_env_hidden=1
+fi
+# shellcheck disable=SC2154
+trap '[ "$_test_env_hidden" -eq 1 ] && mv "$SCRIPT_DIR/.env.test-backup" "$SCRIPT_DIR/.env"' EXIT
+
+# Clear any host-environment CONFLUENCE_PASS_PATH so tests control it
+unset CONFLUENCE_PASS_PATH
+
 source "$SCRIPT_DIR/conflux.sh"
 
 # --- Mock setup ---
