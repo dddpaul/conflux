@@ -29,7 +29,10 @@ export function parseConfluenceUrl(
     }
     const spaceKey = parsed.searchParams.get("spaceKey") ?? "";
     const title = parsed.searchParams.get("title") ?? "";
-    return { baseUrl, spaceKey, pageId, pageTitle: decodeURIComponent(title) };
+    return {
+      baseUrl, spaceKey, pageId,
+      pageTitle: decodeURIComponent(title), originalUrl: url,
+    };
   }
 
   // Cloud: /wiki/spaces/SPACE/pages/123/Title or /spaces/SPACE/pages/123/Title
@@ -39,7 +42,7 @@ export function parseConfluenceUrl(
     const pageId = cloudMatch[2];
     const rawTitle = cloudMatch[3] ?? "";
     const pageTitle = decodeURIComponent(rawTitle.replace(/\+/g, " "));
-    return { baseUrl, spaceKey, pageId, pageTitle };
+    return { baseUrl, spaceKey, pageId, pageTitle, originalUrl: url };
   }
 
   // Server/DC: /display/SPACE/Page+Title (no pageId in URL)
@@ -48,7 +51,7 @@ export function parseConfluenceUrl(
     const spaceKey = displayMatch[1];
     const rawTitle = displayMatch[2];
     const pageTitle = decodeURIComponent(rawTitle.replace(/\+/g, " "));
-    return { baseUrl, spaceKey, pageId: "", pageTitle };
+    return { baseUrl, spaceKey, pageId: "", pageTitle, originalUrl: url };
   }
 
   return null;

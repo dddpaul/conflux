@@ -7,6 +7,8 @@ const mockPageInfo: ConfluencePageInfo = {
   spaceKey: "DEV",
   pageId: "12345",
   pageTitle: "Test Page",
+  originalUrl:
+    "https://confluence.example.com/spaces/DEV/pages/12345/Test+Page",
 };
 
 function mockFetchResponse(
@@ -69,7 +71,7 @@ describe("fetchPageContent", () => {
       published: "2025-01-15",
       pageId: "12345",
       spaceKey: "DEV",
-      sourceUrl: "https://confluence.example.com/pages/viewpage.action?pageId=12345",
+      sourceUrl: "https://confluence.example.com/spaces/DEV/pages/12345/Test+Page",
     });
   });
 
@@ -88,6 +90,44 @@ describe("fetchPageContent", () => {
     expect(fetchSpy).toHaveBeenCalledWith(
       expect.stringContaining("https://wiki.example.com/rest/api/content/"),
       expect.any(Object),
+    );
+  });
+
+  it("uses original URL as sourceUrl, not a synthesized one", async () => {
+    const apiResponse = {
+      id: "42",
+      title: "Page",
+      body: { export_view: { value: "<p>text</p>" } },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockFetchResponse(apiResponse),
+    );
+
+    const result = await fetchPageContent(mockPageInfo);
+
+    expect(result.sourceUrl).toBe(mockPageInfo.originalUrl);
+    expect(result.sourceUrl).not.toContain("viewpage.action");
+  });
+
+  it("decodes percent-encoded characters in sourceUrl", async () => {
+    const encodedPageInfo: ConfluencePageInfo = {
+      ...mockPageInfo,
+      originalUrl:
+        "https://confluence.example.com/spaces/ARCH/pages/123/%D0%A2%D0%B5%D1%81%D1%82",
+    };
+    const apiResponse = {
+      id: "123",
+      title: "Тест",
+      body: { export_view: { value: "<p>text</p>" } },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockFetchResponse(apiResponse),
+    );
+
+    const result = await fetchPageContent(encodedPageInfo);
+
+    expect(result.sourceUrl).toBe(
+      "https://confluence.example.com/spaces/ARCH/pages/123/Тест",
     );
   });
 

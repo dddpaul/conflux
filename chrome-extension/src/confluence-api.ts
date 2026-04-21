@@ -21,13 +21,6 @@ function errorMessageForStatus(status: number): string {
   }
 }
 
-function buildSourceUrl(pageInfo: ConfluencePageInfo): string {
-  const base = pageInfo.baseUrl.replace(/\/+$/, "");
-  return decodeURIComponent(
-    `${base}/pages/viewpage.action?pageId=${pageInfo.pageId}`,
-  );
-}
-
 export async function fetchPageContent(
   pageInfo: ConfluencePageInfo,
 ): Promise<PageContent> {
@@ -55,6 +48,6 @@ export async function fetchPageContent(
     published,
     pageId: data.id,
     spaceKey,
-    sourceUrl: buildSourceUrl(pageInfo),
+    sourceUrl: decodeURIComponent(pageInfo.originalUrl),
   };
 }

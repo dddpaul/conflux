@@ -197,6 +197,7 @@ function pageInfo(pageId: string): ConfluencePageInfo {
     spaceKey: "TEST",
     pageId,
     pageTitle: "",
+    originalUrl: `${mockBaseUrl()}/spaces/TEST/pages/${pageId}`,
   };
 }
 

@@ -3,6 +3,7 @@ export interface ConfluencePageInfo {
   spaceKey: string;
   pageId: string;
   pageTitle: string;
+  originalUrl: string;
 }
 
 export interface ConversionOptions {
