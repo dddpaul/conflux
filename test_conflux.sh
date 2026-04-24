@@ -244,11 +244,13 @@ mock_html2markdown_check_flags() {
     html2markdown() {
         local has_plugin_table=0
         local has_exclude_br=0
+        local has_table_newline=0
         for arg in "$@"; do
             [[ "$arg" == "--plugin-table" ]] && has_plugin_table=1
             [[ "$arg" == "--exclude-selector=br" ]] && has_exclude_br=1
+            [[ "$arg" == "--opt-table-newline-behavior=preserve" ]] && has_table_newline=1
         done
-        if [[ $has_plugin_table -eq 1 && $has_exclude_br -eq 1 ]]; then
+        if [[ $has_plugin_table -eq 1 && $has_exclude_br -eq 1 && $has_table_newline -eq 1 ]]; then
             echo "flags-ok"
         else
             echo "flags-missing: $*" >&2
@@ -260,7 +262,7 @@ mock_html2markdown_check_flags() {
 mock_html2markdown_check_flags
 output=$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
 file_content="$(cat "TST - Test Page.md" 2>/dev/null || true)"
-assert_contains "html2markdown called with --plugin-table and --exclude-selector=br" "flags-ok" "$file_content"
+assert_contains "html2markdown called with --plugin-table, --exclude-selector=br, --opt-table-newline-behavior=preserve" "flags-ok" "$file_content"
 rm -f "TST - Test Page.md"
 
 # Restore default mocks

@@ -126,7 +126,7 @@ conflux() {
 
     # Convert HTML to markdown
     local markdown
-    if ! markdown="$(echo "$html" | html2markdown --plugin-table --exclude-selector=br 2>&1)"; then
+    if ! markdown="$(echo "$html" | html2markdown --plugin-table --exclude-selector=br --opt-table-newline-behavior=preserve 2>&1)"; then
         echo "Error: html2markdown conversion failed" >&2
         return 1
     fi
