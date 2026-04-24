@@ -591,6 +591,59 @@ file_content="$(cat "TST - Page with quotes.md" 2>/dev/null || true)"
 assert_contains "Title with quotes is escaped in frontmatter" 'title: "Page \"with\" quotes"' "$file_content"
 rm -f "TST - Page with quotes.md"
 
+# --- .env loading with script-dir fallback tests ---
+
+# Save state and create temp dirs
+_saved_conflux_script_dir="$_CONFLUX_SCRIPT_DIR"
+_test_script_dir="$(mktemp -d)"
+
+# Restore default mocks
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+
+# Test: falls back to script-dir .env when CWD .env absent
+rm -f .env
+printf '_CONFLUX_TEST_SOURCE=scriptdir\nCONFLUENCE_PASS_PATH="ORG/username"\n' > "$_test_script_dir/.env"
+_CONFLUX_SCRIPT_DIR="$_test_script_dir"
+unset _CONFLUX_TEST_SOURCE
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+assert_eq "Falls back to script-dir .env when CWD .env absent" "scriptdir" "${_CONFLUX_TEST_SOURCE:-unset}"
+rm -f "TST - Test Page.md"
+
+# Test: CWD .env overrides script-dir .env
+printf '_CONFLUX_TEST_SOURCE=cwd\nCONFLUENCE_PASS_PATH="ORG/username"\n' > .env
+printf '_CONFLUX_TEST_SOURCE=scriptdir\nCONFLUENCE_PASS_PATH="ORG/username"\n' > "$_test_script_dir/.env"
+_CONFLUX_SCRIPT_DIR="$_test_script_dir"
+unset _CONFLUX_TEST_SOURCE
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+assert_eq "CWD .env overrides script-dir .env" "cwd" "${_CONFLUX_TEST_SOURCE:-unset}"
+rm -f "TST - Test Page.md"
+rm -f .env
+
+# Test: silent when neither .env exists
+rm -f .env "$_test_script_dir/.env"
+_CONFLUX_SCRIPT_DIR="$_test_script_dir"
+export CONFLUENCE_PASS_PATH="ORG/username"
+ret=0; conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1 || ret=$?
+assert_eq "Silent when neither .env exists" "0" "$ret"
+rm -f "TST - Test Page.md"
+
+# Test: proxy normalization works with script-dir .env
+rm -f .env
+printf 'CONFLUENCE_PASS_PATH="ORG/username"\nNO_PROXY=".example.com"\n' > "$_test_script_dir/.env"
+_CONFLUX_SCRIPT_DIR="$_test_script_dir"
+unset NO_PROXY no_proxy 2>/dev/null || true
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+assert_eq "Proxy normalization works with script-dir .env" ".example.com" "${no_proxy:-unset}"
+rm -f "TST - Test Page.md"
+unset NO_PROXY no_proxy 2>/dev/null || true
+
+# Cleanup
+rm -rf "$_test_script_dir"
+_CONFLUX_SCRIPT_DIR="$_saved_conflux_script_dir"
+export CONFLUENCE_PASS_PATH="ORG/username"
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]] || exit 1

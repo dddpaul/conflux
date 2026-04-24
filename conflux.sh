@@ -3,10 +3,25 @@
 # Confluence page export to markdown
 # Source this file in .bashrc/.zshrc to use the conflux function
 
+# Resolve script directory for .env fallback (bash: BASH_SOURCE, zsh: $0)
+if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+    _CONFLUX_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    _CONFLUX_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+fi
+
 conflux() {
-    # Load .env from current directory if it exists
+    # Load .env: CWD .env wins entirely, falls back to script-dir .env
+    local _env_file=""
     if [[ -f .env ]]; then
-        source .env
+        _env_file=".env"
+    elif [[ -n "${_CONFLUX_SCRIPT_DIR:-}" && -f "$_CONFLUX_SCRIPT_DIR/.env" ]]; then
+        _env_file="$_CONFLUX_SCRIPT_DIR/.env"
+    fi
+
+    if [[ -n "$_env_file" ]]; then
+        # shellcheck source=/dev/null
+        source "$_env_file"
         # Merge NO_PROXY into no_proxy (curl prefers lowercase) and export
         if [[ -n "${NO_PROXY:-}" && -n "${no_proxy:-}" ]]; then
             no_proxy="${no_proxy},${NO_PROXY}"
