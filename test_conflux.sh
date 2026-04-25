@@ -646,6 +646,362 @@ rm -rf "$_test_script_dir"
 _CONFLUX_SCRIPT_DIR="$_saved_conflux_script_dir"
 export CONFLUENCE_PASS_PATH="ORG/username"
 
+# --- Image download tests ---
+
+# Restore default mocks
+mock_pass_success
+
+# Helper: mock html2markdown that outputs markdown with image refs
+mock_html2markdown_with_images() {
+    html2markdown() {
+        echo '![diagram](https://wiki.example.com/download/attachments/123/diagram.png?version=1)'
+        return 0
+    }
+    export -f html2markdown
+}
+
+# Helper: mock curl that handles both API call and image download
+mock_curl_with_image_download() {
+    curl() {
+        local args=("$@")
+        local url="${args[${#args[@]}-1]}"
+        # API call returns page JSON
+        if [[ "$url" == *"/rest/api/content/"* ]]; then
+            local json='{"title":"Img Page","body":{"export_view":{"value":"<p><img src=\"https://wiki.example.com/download/attachments/123/diagram.png?version=1\" /></p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"},"space":{"key":"TST"}}'
+            printf '%s\n%s' "$json" "200"
+        # Image download — check for -o flag and write fake image data
+        elif [[ "$url" == *"/download/attachments/"* ]]; then
+            local output_file=""
+            local i=0
+            for arg in "${args[@]}"; do
+                if [[ "$arg" == "-o" ]]; then
+                    output_file="${args[$((i+1))]}"
+                    break
+                fi
+                ((i++))
+            done
+            if [[ -n "$output_file" ]]; then
+                echo "FAKE_PNG_DATA" > "$output_file"
+            fi
+            return 0
+        else
+            return 22
+        fi
+    }
+    export -f curl
+}
+
+# Test: successful image download rewrites URL to local path
+mock_pass_success
+mock_curl_with_image_download
+mock_html2markdown_with_images
+rm -rf attachments-123
+output=$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" 2>&1)
+assert_eq "Image download outputs filename" "TST - Img Page.md" "$output"
+file_content="$(cat "TST - Img Page.md" 2>/dev/null || true)"
+assert_contains "Image URL rewritten to local path" "attachments-123/diagram.png" "$file_content"
+# Verify the image file was created
+assert_eq "Image file exists in attachments dir" "0" "$([[ -f "attachments-123/diagram.png" ]] && echo 0 || echo 1)"
+img_content="$(cat "attachments-123/diagram.png" 2>/dev/null || true)"
+assert_contains "Image file has content" "FAKE_PNG_DATA" "$img_content"
+rm -f "TST - Img Page.md"
+rm -rf attachments-123
+
+# Test: query params stripped from filename
+file_content="$(cat "TST - Img Page.md" 2>/dev/null || true)"
+# Already tested above — the URL had ?version=1 and the saved file is diagram.png (no query params)
+
+# Test: failed image download produces warning and placeholder
+mock_curl_image_download_fail() {
+    curl() {
+        local args=("$@")
+        local url="${args[${#args[@]}-1]}"
+        if [[ "$url" == *"/rest/api/content/"* ]]; then
+            local json='{"title":"Fail Img","body":{"export_view":{"value":"<p>img</p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"},"space":{"key":"TST"}}'
+            printf '%s\n%s' "$json" "200"
+        elif [[ "$url" == *"/download/attachments/"* ]]; then
+            return 22
+        else
+            return 22
+        fi
+    }
+    export -f curl
+}
+mock_html2markdown_with_fail_images() {
+    html2markdown() {
+        echo '![my diagram](https://wiki.example.com/download/attachments/456/fail.png)'
+        return 0
+    }
+    export -f html2markdown
+}
+mock_pass_success
+mock_curl_image_download_fail
+mock_html2markdown_with_fail_images
+rm -rf attachments-456
+stderr_output=""
+stderr_output="$(conflux "https://wiki.example.com/pages/viewpage.action?pageId=456" 2>&1 1>/dev/null || true)"
+assert_contains "Failed download warns to stderr" "Warning:" "$stderr_output"
+file_content="$(cat "TST - Fail Img.md" 2>/dev/null || true)"
+assert_contains "Failed download inserts unavailable placeholder" "![image unavailable]" "$file_content"
+assert_contains "Failed download preserves original URL" "https://wiki.example.com/download/attachments/456/fail.png" "$file_content"
+rm -f "TST - Fail Img.md"
+rm -rf attachments-456
+
+# Test: no images — no attachments directory created
+mock_pass_success
+mock_curl_success
+mock_html2markdown_success
+rm -rf attachments-100
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=100" >/dev/null 2>&1
+assert_eq "No images: attachments dir not created" "1" "$([[ -d "attachments-100" ]] && echo 0 || echo 1)"
+rm -f "TST - Test Page.md"
+
+# Test: filename deduplication with -2/-3 suffix
+mock_html2markdown_duplicate_images() {
+    html2markdown() {
+        printf '%s\n%s\n%s\n' \
+            '![first](https://wiki.example.com/download/attachments/789/photo.png?v=1)' \
+            '![second](https://wiki.example.com/download/attachments/789/photo.png?v=2)' \
+            '![third](https://wiki.example.com/download/attachments/789/photo.png?v=3)'
+        return 0
+    }
+    export -f html2markdown
+}
+mock_curl_dedup_download() {
+    curl() {
+        local args=("$@")
+        local url="${args[${#args[@]}-1]}"
+        if [[ "$url" == *"/rest/api/content/"* ]]; then
+            local json='{"title":"Dedup Page","body":{"export_view":{"value":"<p>img</p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"},"space":{"key":"TST"}}'
+            printf '%s\n%s' "$json" "200"
+        elif [[ "$url" == *"/download/attachments/"* ]]; then
+            local output_file=""
+            local i=0
+            for arg in "${args[@]}"; do
+                if [[ "$arg" == "-o" ]]; then
+                    output_file="${args[$((i+1))]}"
+                    break
+                fi
+                ((i++))
+            done
+            if [[ -n "$output_file" ]]; then
+                echo "IMG" > "$output_file"
+            fi
+            return 0
+        else
+            return 22
+        fi
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_dedup_download
+mock_html2markdown_duplicate_images
+rm -rf attachments-789
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=789" >/dev/null 2>&1
+assert_eq "Dedup: first image has original name" "0" "$([[ -f "attachments-789/photo.png" ]] && echo 0 || echo 1)"
+assert_eq "Dedup: second image has -2 suffix" "0" "$([[ -f "attachments-789/photo-2.png" ]] && echo 0 || echo 1)"
+assert_eq "Dedup: third image has -3 suffix" "0" "$([[ -f "attachments-789/photo-3.png" ]] && echo 0 || echo 1)"
+file_content="$(cat "TST - Dedup Page.md" 2>/dev/null || true)"
+assert_contains "Dedup: markdown references photo.png" "attachments-789/photo.png" "$file_content"
+assert_contains "Dedup: markdown references photo-2.png" "attachments-789/photo-2.png" "$file_content"
+assert_contains "Dedup: markdown references photo-3.png" "attachments-789/photo-3.png" "$file_content"
+rm -f "TST - Dedup Page.md"
+rm -rf attachments-789
+
+# Test: query params stripped from downloaded filename
+mock_html2markdown_query_params() {
+    html2markdown() {
+        echo '![chart](https://wiki.example.com/download/attachments/321/chart.jpg?version=2&modificationDate=1234567890)'
+        return 0
+    }
+    export -f html2markdown
+}
+mock_curl_query_download() {
+    curl() {
+        local args=("$@")
+        local url="${args[${#args[@]}-1]}"
+        if [[ "$url" == *"/rest/api/content/"* ]]; then
+            local json='{"title":"Query Page","body":{"export_view":{"value":"<p>img</p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"},"space":{"key":"TST"}}'
+            printf '%s\n%s' "$json" "200"
+        elif [[ "$url" == *"/download/attachments/"* ]]; then
+            local output_file=""
+            local i=0
+            for arg in "${args[@]}"; do
+                if [[ "$arg" == "-o" ]]; then
+                    output_file="${args[$((i+1))]}"
+                    break
+                fi
+                ((i++))
+            done
+            if [[ -n "$output_file" ]]; then
+                echo "IMG" > "$output_file"
+            fi
+            return 0
+        else
+            return 22
+        fi
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_query_download
+mock_html2markdown_query_params
+rm -rf attachments-321
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=321" >/dev/null 2>&1
+assert_eq "Query params stripped: file saved as chart.jpg" "0" "$([[ -f "attachments-321/chart.jpg" ]] && echo 0 || echo 1)"
+file_content="$(cat "TST - Query Page.md" 2>/dev/null || true)"
+assert_contains "Query params stripped: markdown refs local path" "attachments-321/chart.jpg" "$file_content"
+rm -f "TST - Query Page.md"
+rm -rf attachments-321
+
+# Test: non-attachment URLs and thumbnail URLs are skipped
+mock_html2markdown_mixed_urls() {
+    html2markdown() {
+        printf '%s\n%s\n' \
+            '![real](https://wiki.example.com/download/attachments/555/real.png)' \
+            '![icon](https://wiki.example.com/images/icons/icon.png)'
+        return 0
+    }
+    export -f html2markdown
+}
+mock_curl_mixed_download() {
+    curl() {
+        local args=("$@")
+        local url="${args[${#args[@]}-1]}"
+        if [[ "$url" == *"/rest/api/content/"* ]]; then
+            local json='{"title":"Mixed Page","body":{"export_view":{"value":"<p>img</p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"},"space":{"key":"TST"}}'
+            printf '%s\n%s' "$json" "200"
+        elif [[ "$url" == *"/download/attachments/"* ]]; then
+            local output_file=""
+            local i=0
+            for arg in "${args[@]}"; do
+                if [[ "$arg" == "-o" ]]; then
+                    output_file="${args[$((i+1))]}"
+                    break
+                fi
+                ((i++))
+            done
+            if [[ -n "$output_file" ]]; then
+                echo "IMG" > "$output_file"
+            fi
+            return 0
+        else
+            return 22
+        fi
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_mixed_download
+mock_html2markdown_mixed_urls
+rm -rf attachments-555
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=555" >/dev/null 2>&1
+assert_eq "Mixed URLs: attachment image downloaded" "0" "$([[ -f "attachments-555/real.png" ]] && echo 0 || echo 1)"
+file_content="$(cat "TST - Mixed Page.md" 2>/dev/null || true)"
+assert_contains "Mixed URLs: attachment URL rewritten" "attachments-555/real.png" "$file_content"
+assert_contains "Mixed URLs: non-attachment URL preserved" "https://wiki.example.com/images/icons/icon.png" "$file_content"
+rm -f "TST - Mixed Page.md"
+rm -rf attachments-555
+
+# Test: URL-encoded filenames are decoded
+mock_html2markdown_encoded_filename() {
+    html2markdown() {
+        echo '![doc](https://wiki.example.com/download/attachments/444/%D1%81%D1%85%D0%B5%D0%BC%D0%B0.png)'
+        return 0
+    }
+    export -f html2markdown
+}
+mock_curl_encoded_download() {
+    curl() {
+        local args=("$@")
+        local url="${args[${#args[@]}-1]}"
+        if [[ "$url" == *"/rest/api/content/"* ]]; then
+            local json='{"title":"Encoded Page","body":{"export_view":{"value":"<p>img</p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"},"space":{"key":"TST"}}'
+            printf '%s\n%s' "$json" "200"
+        elif [[ "$url" == *"/download/attachments/"* ]]; then
+            local output_file=""
+            local i=0
+            for arg in "${args[@]}"; do
+                if [[ "$arg" == "-o" ]]; then
+                    output_file="${args[$((i+1))]}"
+                    break
+                fi
+                ((i++))
+            done
+            if [[ -n "$output_file" ]]; then
+                echo "IMG" > "$output_file"
+            fi
+            return 0
+        else
+            return 22
+        fi
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_encoded_download
+mock_html2markdown_encoded_filename
+rm -rf attachments-444
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=444" >/dev/null 2>&1
+# схема.png is the URL-decoded form of %D1%81%D1%85%D0%B5%D0%BC%D0%B0.png
+assert_eq "URL-encoded filename decoded" "0" "$([[ -f "attachments-444/схема.png" ]] && echo 0 || echo 1)"
+rm -f "TST - Encoded Page.md"
+rm -rf attachments-444
+
+# Test: same credentials used for image download as page fetch
+mock_html2markdown_with_images
+mock_curl_check_auth() {
+    curl() {
+        local args=("$@")
+        local url="${args[${#args[@]}-1]}"
+        if [[ "$url" == *"/rest/api/content/"* ]]; then
+            local json='{"title":"Auth Page","body":{"export_view":{"value":"<p>img</p>"}},"history":{"createdBy":{"displayName":"John Doe"},"createdDate":"2024-01-15T10:30:00.000Z"},"space":{"key":"TST"}}'
+            printf '%s\n%s' "$json" "200"
+        elif [[ "$url" == *"/download/attachments/"* ]]; then
+            # Check that -u flag has correct credentials
+            local auth=""
+            local i=0
+            for arg in "${args[@]}"; do
+                if [[ "$arg" == "-u" ]]; then
+                    auth="${args[$((i+1))]}"
+                    break
+                fi
+                ((i++))
+            done
+            if [[ "$auth" == "username:s3cret" ]]; then
+                local output_file=""
+                i=0
+                for arg in "${args[@]}"; do
+                    if [[ "$arg" == "-o" ]]; then
+                        output_file="${args[$((i+1))]}"
+                        break
+                    fi
+                    ((i++))
+                done
+                if [[ -n "$output_file" ]]; then
+                    echo "AUTH_OK" > "$output_file"
+                fi
+                return 0
+            else
+                return 22
+            fi
+        else
+            return 22
+        fi
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_check_auth
+rm -rf attachments-123
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+assert_eq "Image download uses same credentials" "0" "$([[ -f "attachments-123/diagram.png" ]] && echo 0 || echo 1)"
+auth_content="$(cat "attachments-123/diagram.png" 2>/dev/null || true)"
+assert_contains "Image download authenticated correctly" "AUTH_OK" "$auth_content"
+rm -f "TST - Auth Page.md"
+rm -rf attachments-123
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]] || exit 1

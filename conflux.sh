@@ -10,6 +10,87 @@ else
     _CONFLUX_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 fi
 
+_conflux_download_images() {
+    local markdown="$1" page_id="$2" login="$3" password="$4"
+    local attach_dir="attachments-${page_id}"
+    local dir_created=0
+    local seen_names=""
+    local result="$markdown"
+
+    # Extract all image references matching /download/attachments/
+    local urls
+    urls="$(printf '%s\n' "$markdown" | grep -oE '!\[[^]]*\]\(https?://[^)]*/download/attachments/[^)]+\)' || true)"
+
+    if [[ -z "$urls" ]]; then
+        printf '%s\n' "$markdown"
+        return 0
+    fi
+
+    while IFS= read -r match; do
+        [[ -z "$match" ]] && continue
+
+        # Extract full URL from ![alt](url)
+        local full_url
+        full_url="${match#*](}"
+        full_url="${full_url%)}"
+
+        # Skip thumbnails and generated previews
+        if [[ "$full_url" == */thumbnails/* || "$full_url" == */generated/* ]]; then
+            continue
+        fi
+
+        # Extract filename: last path segment before query params
+        local url_no_query raw_name
+        url_no_query="${full_url%%\?*}"
+        raw_name="${url_no_query##*/}"
+
+        # URL-decode the filename (convert %XX to bytes, + to space)
+        local decoded_name
+        decoded_name="$(printf '%b' "$(printf '%s\n' "$raw_name" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')")"
+
+        # Deduplicate filenames using string accumulator + grep (bash 3.2 compat)
+        local final_name="$decoded_name"
+        if printf '%s\n' "$seen_names" | grep -qF "|${decoded_name}|"; then
+            # Name collision — find next available suffix
+            local base ext counter
+            if [[ "$decoded_name" == *.* ]]; then
+                ext=".${decoded_name##*.}"
+                base="${decoded_name%.*}"
+            else
+                ext=""
+                base="$decoded_name"
+            fi
+            counter=2
+            while printf '%s\n' "$seen_names" | grep -qF "|${base}-${counter}${ext}|"; do
+                ((counter++))
+            done
+            final_name="${base}-${counter}${ext}"
+        fi
+        seen_names="${seen_names}|${final_name}|"
+
+        # Create attachments directory on first successful match
+        if [[ "$dir_created" -eq 0 ]]; then
+            mkdir -p "$attach_dir"
+            dir_created=1
+        fi
+
+        # Download the image
+        if curl -sf -u "${login}:${password}" -o "${attach_dir}/${final_name}" "$full_url" 2>/dev/null; then
+            # Rewrite URL to relative local path
+            result="${result//"$full_url"/"${attach_dir}/${final_name}"}"
+        else
+            echo "Warning: failed to download image: $full_url" >&2
+            # Replace with unavailable placeholder — extract alt text via param expansion
+            local alt_text
+            alt_text="${match#!\[}"
+            alt_text="${alt_text%%\]*}"
+            result="${result//"![${alt_text}](${full_url})"/"![image unavailable](${full_url})"}"
+        fi
+    done <<< "$urls"
+
+    printf '%s\n' "$result"
+}
+
 conflux() {
     # Load .env: CWD .env wins entirely, falls back to script-dir .env
     local _env_file=""
@@ -130,6 +211,9 @@ conflux() {
         echo "Error: html2markdown conversion failed" >&2
         return 1
     fi
+
+    # Download images from Confluence attachments and rewrite markdown URLs
+    markdown="$(_conflux_download_images "$markdown" "$page_id" "$login" "$password")"
 
     # Sanitize title for use in filename: remove / : ? * " < > | \
     local sanitized_title
