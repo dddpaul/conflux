@@ -1,10 +1,11 @@
 ---
 id: TASK-37
 title: Download and embed page attachments and images in conflux.sh
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - '@claude'
 created_date: '2026-04-25 09:50'
-updated_date: '2026-04-25 17:05'
+updated_date: '2026-04-25 17:31'
 labels: []
 dependencies: []
 ---
@@ -34,13 +35,31 @@ Add image download to conflux.sh so exported markdown includes actual images ins
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Shell script downloads images referenced in export_view HTML to attachments-{pageId}/ folder
-- [ ] #2 Shell script rewrites img src in markdown to relative local paths (attachments-{pageId}/filename.png)
-- [ ] #3 Download authenticates with same pass credentials as page fetch
-- [ ] #4 Original filenames preserved, URL-decoded, with -2/-3 suffix for collisions
-- [ ] #5 Failed downloads warn to stderr and replace ref with ![image unavailable](url)
-- [ ] #6 Non-image attachment URLs and thumbnail URLs are skipped
-- [ ] #7 No folder created when page has no downloadable images
-- [ ] #8 Compatible with bash 3.2 (no associative arrays)
-- [ ] #9 test_conflux.sh includes tests for image download: successful download with path rewrite, download failure with placeholder, no-images no-op, filename deduplication, query param stripping
+- [x] #1 Shell script downloads images referenced in export_view HTML to attachments-{pageId}/ folder
+- [x] #2 Shell script rewrites img src in markdown to relative local paths (attachments-{pageId}/filename.png)
+- [x] #3 Download authenticates with same pass credentials as page fetch
+- [x] #4 Original filenames preserved, URL-decoded, with -2/-3 suffix for collisions
+- [x] #5 Failed downloads warn to stderr and replace ref with ![image unavailable](url)
+- [x] #6 Non-image attachment URLs and thumbnail URLs are skipped
+- [x] #7 No folder created when page has no downloadable images
+- [x] #8 Compatible with bash 3.2 (no associative arrays)
+- [x] #9 test_conflux.sh includes tests for image download: successful download with path rewrite, download failure with placeholder, no-images no-op, filename deduplication, query param stripping
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Plan: Add download_images() function to conflux.sh. After html2markdown converts HTML to markdown and before writing to file:
+1. download_images() scans markdown for ![...](url) where URL matches /download/attachments/
+2. Creates attachments-{pageId}/ directory only when matches found
+3. Downloads each image with curl -sf -u login:password
+4. Handles filename dedup with -2/-3 suffixes using string accumulator + grep (bash 3.2 compat)
+5. URL-decodes filenames, strips query params
+6. On failure: warns to stderr, replaces ref with ![image unavailable](url)
+7. Rewrites URLs to relative paths
+8. Add comprehensive tests to test_conflux.sh
+
+Commit: `4c5fa92` - task-37: Download and embed Confluence page images in conflux.sh
+
+Implemented _conflux_download_images() function in conflux.sh. After html2markdown conversion, scans markdown for ![...](url) matching /download/attachments/, downloads images with curl using same credentials, rewrites URLs to relative local paths. Handles filename dedup (-2/-3 suffixes), URL-encoded filenames, query param stripping, thumbnail/preview skipping, per-image failure with placeholder. Bash 3.2 compatible (no associative arrays). Added 22 new tests covering all scenarios. 80 total tests pass.
+<!-- SECTION:NOTES:END -->
