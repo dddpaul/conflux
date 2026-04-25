@@ -53,7 +53,7 @@ export async function processImages(
 
   let result = html;
   for (const [original, dataUri] of replacements) {
-    result = result.replaceAll(original, dataUri);
+    result = result.split(original).join(dataUri);
   }
   return result;
 }
