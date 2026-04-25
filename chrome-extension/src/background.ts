@@ -1,4 +1,5 @@
 import { fetchPageContent } from "./confluence-api";
+import { processImages } from "./image-processor";
 import { FetchPageMessage, FetchPageResponse } from "./types";
 
 chrome.runtime.onMessage.addListener(
@@ -9,15 +10,23 @@ chrome.runtime.onMessage.addListener(
   ) => {
     if (message.action !== "fetchPage") return false;
 
-    fetchPageContent(message.pageInfo)
-      .then((content) => {
-        sendResponse({ success: true, content });
-      })
-      .catch((err: unknown) => {
+    (async () => {
+      try {
+        const content = await fetchPageContent(message.pageInfo);
+        const processedHtml = await processImages(
+          content.html,
+          message.pageInfo.baseUrl,
+        );
+        sendResponse({
+          success: true,
+          content: { ...content, html: processedHtml },
+        });
+      } catch (err: unknown) {
         const errorMessage =
           err instanceof Error ? err.message : "Unknown error";
         sendResponse({ success: false, error: errorMessage });
-      });
+      }
+    })();
 
     return true; // keep message channel open for async response
   },
