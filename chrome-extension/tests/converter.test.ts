@@ -504,5 +504,41 @@ describe("convertHtmlToMarkdown", () => {
       const fm = buildFrontmatter(meta);
       expect(fm).toContain('author: ""');
     });
+
+    it("escapes backslashes in YAML string values", () => {
+      const meta: FrontmatterMeta = {
+        ...baseMeta,
+        title: "Path C:\\Users\\test",
+        author: "O\\Brien",
+      };
+      const fm = buildFrontmatter(meta);
+      expect(fm).toContain('title: "Path C:\\\\Users\\\\test"');
+      expect(fm).toContain('author: "O\\\\Brien"');
+    });
+
+    it("shared fixture: frontmatter matches expected output for known input", () => {
+      const fixtureMeta: FrontmatterMeta = {
+        title: "Fixture Page",
+        source: "https://wiki.example.com/pages/viewpage.action?pageId=99999",
+        author: "Jane Doe",
+        published: "2025-03-10",
+        pageId: "99999",
+        spaceKey: "ENG",
+      };
+      const fm = buildFrontmatter(fixtureMeta);
+      const expected = [
+        "---",
+        'title: "Fixture Page"',
+        'source: "https://wiki.example.com/pages/viewpage.action?pageId=99999"',
+        'author: "Jane Doe"',
+        "published: 2025-03-10",
+        `created: ${fixedDate}`,
+        "id: 99999",
+        "tags:",
+        '  - "confluence"',
+        "---",
+      ].join("\n");
+      expect(fm).toBe(expected);
+    });
   });
 });

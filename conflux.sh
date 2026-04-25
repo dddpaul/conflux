@@ -195,8 +195,8 @@ conflux() {
     # Extract metadata for frontmatter
     local space_key author published
     space_key="$(jq -re '.space.key // empty' <<< "$body" 2>/dev/null || echo "")"
-    author="$(jq -re '.history.createdBy.displayName' <<< "$body" 2>/dev/null || echo "")"
-    published="$(jq -re '.history.createdDate' <<< "$body" 2>/dev/null | head -c 10 || echo "")"
+    author="$(jq -re '.history.createdBy.displayName // empty' <<< "$body" 2>/dev/null || echo "")"
+    published="$(jq -re '.history.createdDate // empty' <<< "$body" 2>/dev/null | head -c 10)"
 
     # URL-decode the source URL (pure bash: convert + to space, %XX to bytes)
     local source_url
@@ -220,13 +220,16 @@ conflux() {
     sanitized_title="$(echo "$title" | tr -d '/:?*"<>|\\')"
 
     # Build YAML frontmatter
-    # Double-quote string values for YAML safety
+    # Double-quote string values for YAML safety; escape \ then " (same order as extension)
+    local esc_title="${title//\\/\\\\}"; esc_title="${esc_title//\"/\\\"}"
+    local esc_source="${source_url//\\/\\\\}"; esc_source="${esc_source//\"/\\\"}"
+    local esc_author="${author//\\/\\\\}"; esc_author="${esc_author//\"/\\\"}"
     local frontmatter
     frontmatter="$(printf -- '---\ntitle: "%s"\nsource: "%s"\nauthor: "%s"\npublished: %s\ncreated: %s\nid: %s\ntags:\n  - "confluence"\n---' \
-        "${title//\"/\\\"}" \
-        "${source_url//\"/\\\"}" \
-        "${author//\"/\\\"}" \
-        "$published" \
+        "$esc_title" \
+        "$esc_source" \
+        "$esc_author" \
+        "${published:-$created}" \
         "$created" \
         "$page_id")"
 

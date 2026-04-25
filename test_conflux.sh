@@ -593,6 +593,60 @@ file_content="$(cat "TST - Page with quotes.md" 2>/dev/null || true)"
 assert_contains "Title with quotes is escaped in frontmatter" 'title: "Page \"with\" quotes"' "$file_content"
 rm -f "TST - Page with quotes.md"
 
+# Test: backslashes in title and author are escaped in frontmatter
+mock_curl_backslash() {
+    curl() {
+        local json='{"title":"Path C:\\Users\\test","body":{"export_view":{"value":"<p>ok</p>"}},"history":{"createdBy":{"displayName":"O\\Brien"},"createdDate":"2024-01-15T10:30:00.000Z"},"space":{"key":"TST"}}'
+        printf '%s\n%s' "$json" "200"
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_backslash
+mock_html2markdown_success
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+file_content="$(cat "TST - Path CUserstest.md" 2>/dev/null || true)"
+assert_contains "Backslash in title is escaped in frontmatter" 'title: "Path C:\\Users\\test"' "$file_content"
+assert_contains "Backslash in author is escaped in frontmatter" 'author: "O\\Brien"' "$file_content"
+rm -f "TST - Path CUserstest.md"
+
+# Test: published defaults to created date when API field is missing
+mock_pass_success
+mock_curl_no_history
+mock_html2markdown_success
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=123" >/dev/null 2>&1
+file_content="$(cat "123 - No History.md" 2>/dev/null || true)"
+today="$(date +%Y-%m-%d)"
+assert_contains "Published defaults to today when missing" "published: $today" "$file_content"
+rm -f "123 - No History.md"
+
+# Test: shared fixture — frontmatter matches expected output for known input
+mock_curl_fixture() {
+    curl() {
+        local json='{"title":"Fixture Page","body":{"export_view":{"value":"<p>hello</p>"}},"history":{"createdBy":{"displayName":"Jane Doe"},"createdDate":"2025-03-10T14:00:00.000Z"},"space":{"key":"ENG"}}'
+        printf '%s\n%s' "$json" "200"
+    }
+    export -f curl
+}
+mock_pass_success
+mock_curl_fixture
+mock_html2markdown_success
+conflux "https://wiki.example.com/pages/viewpage.action?pageId=99999" >/dev/null 2>&1
+file_content="$(cat "ENG - Fixture Page.md" 2>/dev/null || true)"
+today="$(date +%Y-%m-%d)"
+expected_fm="---
+title: \"Fixture Page\"
+source: \"https://wiki.example.com/pages/viewpage.action?pageId=99999\"
+author: \"Jane Doe\"
+published: 2025-03-10
+created: ${today}
+id: 99999
+tags:
+  - \"confluence\"
+---"
+assert_contains "Fixture: frontmatter matches expected output" "$expected_fm" "$file_content"
+rm -f "ENG - Fixture Page.md"
+
 # --- .env loading with script-dir fallback tests ---
 
 # Save state and create temp dirs
